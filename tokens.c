@@ -12,56 +12,56 @@ char* token_to_string(const Token token) {
     switch (token.type) {
         // Punctuators
         case TOK_L_PAREN:
-            return "(";
+            return "l_paren  (";
         case TOK_R_PAREN:
-            return ")";
+            return "r_paren  )";
         case TOK_L_SQUARE:
-            return "[";
+            return "l_square  [";
         case TOK_R_SQUARE:
-            return "]";
+            return "r_square  ]";
         case TOK_L_BRACE:
-            return "{";
+            return "l_brace  {";
         case TOK_R_BRACE:
-            return "}";
+            return "r_brace  }";
         case TOK_COMMA:
-            return ",";
+            return "comma  ,";
         case TOK_SEMI:
-            return ";";
+            return "semi  ;";
         case TOK_PLUS:
-            return "+";
+            return "plus  +";
         case TOK_MINUS:
-            return "-";
+            return "minus  -";
         case TOK_TILDE:
-            return "~";
+            return "tilde  ~";
         case TOK_PERCENT:
-            return "%";
+            return "percent  %";
         case TOK_LESS:
-            return "<";
+            return "less  <";
         case TOK_GREATER:
-            return ">";
+            return "greater  >";
         case TOK_QUESTION:
-            return "?";
+            return "question  ?";
         case TOK_EXCLAIM:
-            return "!";
+            return "exclaim  !";
         case TOK_STAR:
-            return "*";
+            return "star  *";
         case TOK_CARET:
-            return "^";
+            return "caret  ^";
         case TOK_AMP:
-            return "&";
+            return "amp  &";
         case TOK_EQUAL:
-            return "=";
-        case TOK_PERIDO:
-            return ".";
+            return "equal  =";
+        case TOK_PERIOD:
+            return "period  .";
         case TOK_PIPE:
-            return "|";
+            return "pipe  |";
         case TOK_SLASH:
-            return "/";
+            return "slash  /";
         case TOK_COLON:
-            return ":";
+            return "colon  :";
 
         case TOK_EOF:
-            return "";
+            return "eof  ";
 
         default:
             fprintf(stderr, "Invalid token type.\n");

@@ -26,13 +26,13 @@ typedef enum : uint8_t {
     TOK_CARET = 188,    // ^
     TOK_AMP = 76,       // &
     TOK_EQUAL = 122,    // =
-    TOK_PERIDO = 92,    // .
+    TOK_PERIOD = 92,    // .
     TOK_PIPE = 248,     // |
     TOK_SLASH = 94,     // /
     TOK_COLON = 116,    // :
     // TOK_HASH,       // # (Ignored: handled by preprocessing)
 
-    TOK_EOF,         // End-of-file
+    TOK_EOF,            // End-of-file
 } TokenType;
 // TODO: two arrays for loc
 typedef struct Token Token;
