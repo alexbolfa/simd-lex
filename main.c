@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     }
 
     char *file_content;
-    TokenList *tokens = lex_file(argv[1], &file_content);
+    TokenArray tokens = lex_file(argv[1], &file_content);
 
     print_tokens(tokens);
 

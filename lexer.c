@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-TokenList* lex(char *input, long input_size, char* file_path) {
-    TokenList* tokens = create_empty_token_list();
+TokenArray lex(char *input, long input_size) {
+    TokenArray tokens = create_empty_token_array(input_size);
     char *curr_input = input;
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
@@ -24,11 +24,10 @@ TokenList* lex(char *input, long input_size, char* file_path) {
             const uint8_t loc = indices[j];
 
             append_token(
-                tokens,
+                &tokens,
                 create_token(
-                    look_up(tags_array[loc]),
-                    curr_input + loc,
-                    file_path
+                    tags_array[loc],
+                    i + loc
                 )
             );
         }
@@ -76,17 +75,17 @@ __m256i lex_vector(__m256i vector) {
     return tags;
 }
 
-TokenList* lex_file(char* file_path, char **file_content) {
+TokenArray lex_file(char *file_path, char **file_content) {
     long file_size;
     *file_content = read_file(file_path, &file_size, VECTOR_SIZE);
 
-    TokenList *tokens = lex(*file_content, file_size, file_path);
+    TokenArray tokens = lex(*file_content, file_size);
 
     // Append end-of-file token
     append_token(
-        tokens,
-        create_token(TOK_EOF, NULL, file_path)
-        );
+        &tokens,
+        create_token(TOK_EOF, 0)
+    );
 
     return tokens;
 }

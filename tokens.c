@@ -3,62 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-TokenType look_up(const uint8_t id) {
-    // TODO: look_up: ADD 2 byte punctuators
-    switch (id) {
-        // One byte punctuators
-        case 80: return TOK_L_PAREN;
-        case 82: return TOK_R_PAREN;
-        case 182: return TOK_L_SQUARE;
-        case 186: return TOK_R_SQUARE;
-        case 246: return TOK_L_BRACE;
-        case 250: return TOK_R_BRACE;
-        case 88: return TOK_COMMA;
-        case 118: return TOK_SEMI;
-        case 86: return TOK_PLUS;
-        case 90: return TOK_MINUS;
-        case 252: return TOK_TILDE;
-        case 74: return TOK_PERCENT;
-        case 120: return TOK_LESS;
-        case 124: return TOK_GREATER;
-        case 126: return TOK_QUESTION;
-        case 66: return TOK_EXCLAIM;
-        case 84: return TOK_STAR;
-        case 188: return TOK_CARET;
-        case 76: return TOK_AMP;
-        case 122: return TOK_EQUAL;
-        case 92: return TOK_PERIDO;
-        case 248: return TOK_PIPE;
-        case 94: return TOK_SLASH;
-        case 116: return TOK_COLON;
-
-        default:
-            fprintf(stderr, "Invalid token type.\n");
-        return -1;
-    }
+Token create_token(TokenType type, uint32_t loc) {
+    return (Token) { type, loc };
 }
 
-Token* create_token(TokenType type, char* loc, char* file_path) {
-    Token* new_token = (Token*) malloc(sizeof(Token));
-    if (new_token == NULL) {
-        return NULL;    // Memory allocation failure
-    }
-
-    new_token->type = type;
-    new_token->loc = loc;
-    new_token->file_path = file_path;
-
-    return new_token;
-}
-
-void free_token(Token* token) {
-    free(token->loc);
-    free(token);
-}
-
-char* token_to_string(const Token *token) {
+char* token_to_string(const Token token) {
     // TODO: token_to_string: ADD 2 byte punctuators
-    switch (token->type) {
+    switch (token.type) {
         // Punctuators
         case TOK_L_PAREN:
             return "(";
@@ -118,62 +69,38 @@ char* token_to_string(const Token *token) {
     }
 }
 
-void print_tokens(const TokenList *tok_list) {
-    TokenNode *current = tok_list->head;
-
-    while (current) {
-        Token *token = current->tok;
+void print_tokens(const TokenArray tok_array) {
+    for (int i = 0; i < tok_array.size; ++i) {
+        Token token = create_token(tok_array.token_types[i], tok_array.token_locs[i]);
 
         printf("%s\n", token_to_string(token));
-
-        current = current->next;
     }
 }
 
-TokenList* create_empty_token_list() {
-    TokenList* new_list = (TokenList*) malloc(sizeof(TokenList));
-    if (new_list == NULL) {
-        return NULL;    // Memory allocation failure
+TokenArray create_empty_token_array(uint64_t capacity) {
+    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType));
+    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t));
+
+    if (tokens_types == NULL || token_locs == NULL) {
+        fprintf(stderr, "Memory allocation failure.\n");
     }
 
-    new_list->head = NULL;
-    new_list->tail = NULL;
+    TokenArray tok_array;
+    tok_array.token_types = tokens_types;
+    tok_array.token_locs = token_locs;
+    tok_array.capacity = capacity;
+    tok_array.size = 0;
 
-    return new_list;
+    return tok_array;
 }
 
-void append_token(TokenList *tok_list, Token *token) {
-    // Create new token node
-    TokenNode *node = (TokenNode*) malloc(sizeof(TokenNode));
-    if (!node) {
-        fprintf(stderr, "Memory allocation failed.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    node->tok = token;
-    node->next = NULL;
-
-    // Append the new token node
-    if (!tok_list->head) {
-        tok_list->head = tok_list->tail = node; // Initialise empty list
-    } else {
-        tok_list->tail->next = node;
-        tok_list->tail = node;
-    }
+void append_token(TokenArray *tok_list, Token token) {
+    tok_list->token_types[tok_list->size] = token.type;
+    tok_list->token_locs[tok_list->size] = token.loc;
+    ++tok_list->size;
 }
 
-void free_token_list(TokenList *tok_list) {
-    TokenNode *current = tok_list->head;
-
-    while (current) {
-        TokenNode *next = current->next;
-
-        free_token(current->tok);   // Free token
-        free(current);              // Free node
-
-        current = next;
-    }
-
-    // Reset list
-    tok_list->head = tok_list->tail = NULL;
+void free_token_array(TokenArray tok_list) {
+    free(tok_list.token_types);
+    free(tok_list.token_locs);
 }

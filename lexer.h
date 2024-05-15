@@ -11,10 +11,9 @@
  * @param input A pointer to the FILE structure representing
  *  the input file.
  * @param input_size Length of input.
- * @param file_path Path to the file of input.
  * @return A linked list of TokenNode structures.
  */
-TokenList* lex(char *input, long input_size, char* file_path);
+TokenArray lex(char *input, long input_size);
 
 /**
  * Finds indices of even values that mark the start of tokens.
@@ -29,7 +28,7 @@ void find_token_indices(__m256i vector, uint8_t *token_indices, int *size);
 
 __m256i lex_vector(__m256i vector);
 
-TokenList* lex_file(char* file_path, char **file_content);
+TokenArray lex_file(char *file_path, char **file_content);
 
 /**
  * Lexes single byte punctuators and overlays their ASCII code to a
