@@ -26,7 +26,7 @@ TokenArray lex(char *input, long input_size);
  */
 void find_token_indices(__m256i vector, uint8_t *token_indices, int *size);
 
-__m256i lex_vector(__m256i vector);
+__m256i run_sublexers(char *input);
 
 TokenArray lex_file(char *file_path, char **file_content);
 

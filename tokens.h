@@ -6,33 +6,33 @@
 // TODO: TOKEN_TYPE: ADD 2 byte punctuators
 typedef enum : uint8_t {
     // One byte punctuators
-    TOK_L_PAREN = 80,   // (
-    TOK_R_PAREN = 82,   // )
-    TOK_L_SQUARE = 182, // [
-    TOK_R_SQUARE = 186, // ]
-    TOK_L_BRACE = 246,  // {
-    TOK_R_BRACE = 250,  // }
-    TOK_COMMA = 88,     // ,
-    TOK_SEMI = 118,     // ;
-    TOK_PLUS = 86,      // +
-    TOK_MINUS = 90,     // -
-    TOK_TILDE = 252,    // ~
-    TOK_PERCENT = 74,   // %
-    TOK_LESS = 120,     // <
-    TOK_GREATER = 124,  // >
-    TOK_QUESTION = 126, // ?
-    TOK_EXCLAIM = 66,   // !
-    TOK_STAR = 84,      // *
-    TOK_CARET = 188,    // ^
-    TOK_AMP = 76,       // &
-    TOK_EQUAL = 122,    // =
-    TOK_PERIOD = 92,    // .
-    TOK_PIPE = 248,     // |
-    TOK_SLASH = 94,     // /
-    TOK_COLON = 116,    // :
-    // TOK_HASH,       // # (Ignored: handled by preprocessing)
+    TOK_L_PAREN = 40,   // (
+    TOK_R_PAREN = 41,   // )
+    TOK_L_SQUARE = 91,  // [
+    TOK_R_SQUARE = 93,  // ]
+    TOK_L_BRACE = 123,  // {
+    TOK_R_BRACE = 125,  // }
+    TOK_COMMA = 44,     // ,
+    TOK_SEMI = 59,      // ;
+    TOK_PLUS = 43,      // +
+    TOK_MINUS = 45,     // -
+    TOK_TILDE = 126,    // ~
+    TOK_PERCENT = 37,   // %
+    TOK_LESS = 60,      // <
+    TOK_GREATER = 62,   // >
+    TOK_QUESTION = 63,  // ?
+    TOK_EXCLAIM = 33,   // !
+    TOK_STAR = 42,      // *
+    TOK_CARET = 94,     // ^
+    TOK_AMP = 38,       // &
+    TOK_EQUAL = 61,     // =
+    TOK_PERIOD = 46,    // .
+    TOK_PIPE = 124,     // |
+    TOK_SLASH = 47,     // /
+    TOK_COLON = 58,     // :
+    // TOK_HASH,        // # (Ignored: handled by preprocessing)
 
-    TOK_EOF,            // End-of-file
+    TOK_EOF = 0,        // End-of-file
 } TokenType;
 
 typedef struct Token Token;

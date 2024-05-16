@@ -11,8 +11,8 @@ TokenArray lex(char *input, long input_size) {
     char *curr_input = input;
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
-        const __m256i vector = load_vector(curr_input);
-        const __m256i tags = lex_vector(vector);  // Even-valued tags mark start of token
+        // Run sub lexers
+        const __m256i tags = run_sublexers(curr_input);
         const uint8_t* tags_array = (uint8_t*) &tags;
 
         // Traverse tags
@@ -20,6 +20,7 @@ TokenArray lex(char *input, long input_size) {
         uint8_t indices[VECTOR_SIZE];
         find_token_indices(tags, indices, &size);
 
+        // Add tokens
         for (uint8_t j = 0; j < size; ++j) {
             const uint8_t loc = indices[j];
 
@@ -39,11 +40,9 @@ TokenArray lex(char *input, long input_size) {
 }
 
 void find_token_indices(__m256i vector, uint8_t *token_indices, int *size) {
-    // Get mask of even numbers
-    __m256i even_mask = _mm256_set1_epi8(1);
-    even_mask = _mm256_and_si256(vector, even_mask);
-    even_mask = _mm256_xor_si256(even_mask, _mm256_set1_epi8(1));
-    even_mask *= 0xFF;
+    // Get mask of non-zero numbers
+    __m256i mask = _mm256_cmpeq_epi8(vector, _mm256_setzero_si256());
+    mask = _mm256_xor_si256(mask, _mm256_set1_epi32(-1));
 
     __m256i indices = _mm256_setr_epi8(
         0, 1, 2, 3, 4, 5, 6, 7,
@@ -54,7 +53,7 @@ void find_token_indices(__m256i vector, uint8_t *token_indices, int *size) {
 
     // Split vectors in 64bit segments that can be used by popcnt and pext
     uint64_t *indices_64 = (uint64_t *) &indices;
-    uint64_t *mask_64 = (uint64_t *) &even_mask;
+    uint64_t *mask_64 = (uint64_t *) &mask;
 
     *size = 0;
     for (int i = 0; i < 4; ++i) {
@@ -66,8 +65,9 @@ void find_token_indices(__m256i vector, uint8_t *token_indices, int *size) {
     }
 }
 
-__m256i lex_vector(__m256i vector) {
-    __m256i tags = _mm256_set1_epi8(-1);
+__m256i run_sublexers(char *input) {
+    const __m256i vector = load_vector(input);
+    __m256i tags = _mm256_setzero_si256();
 
     // Run all sub lexers
     one_byte_punct_sub_lex(vector, &tags);
@@ -114,7 +114,6 @@ void one_byte_punct_sub_lex(__m256i vector, __m256i *tags) {
     mask = _mm256_or_si256(mask, outside_range_mask);
 
     // Overlay found one-byte punctators over tags
-    vector = _mm256_adds_epu8(vector, vector);  // Multiply by two
     *tags = _mm256_blendv_epi8(*tags, vector, mask);
 }
 
