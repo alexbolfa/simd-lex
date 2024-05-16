@@ -34,7 +34,7 @@ typedef enum : uint8_t {
 
     TOK_EOF,            // End-of-file
 } TokenType;
-// TODO: two arrays for loc
+
 typedef struct Token Token;
 struct Token {
     TokenType type;     // Token type (identifier, number ...etc)
