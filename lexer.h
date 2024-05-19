@@ -24,6 +24,14 @@ TokenArray lex(char *input, long input_size);
 void mm256_pext(__m256i *vector, __m256i mask, int *size);
 
 /**
+ * Find the mask of non-zero elements of a given vector.
+ *
+ * @param vector A __m256i input vector.
+ * @return Mask of non-zero elements of input vector.
+ */
+__m256i non_zero_mask(const __m256i vector);
+
+/**
  * Finds indices of even values that mark the start of tokens.
  *
  * @param token_tags An __m256i vector to search for even values.

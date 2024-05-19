@@ -39,10 +39,16 @@ void mm256_pext(__m256i *vector, __m256i mask, int *size) {
     }
 }
 
+__m256i non_zero_mask(const __m256i vector) {
+    __m256i mask = _mm256_cmpeq_epi8(vector, _mm256_setzero_si256());
+    mask = _mm256_xor_si256(mask, _mm256_set1_epi32(-1));
+
+    return mask;
+}
+
 void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size) {
     // Get mask of non-zero numbers
-    __m256i mask = _mm256_cmpeq_epi8(*token_tags, _mm256_setzero_si256());
-    mask = _mm256_xor_si256(mask, _mm256_set1_epi32(-1));
+    __m256i mask = non_zero_mask(*token_tags);
 
     *token_indices = _mm256_setr_epi8(
         0, 1, 2, 3, 4, 5, 6, 7,
