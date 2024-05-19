@@ -1,6 +1,9 @@
 #ifndef TOKENS_H
 #define TOKENS_H
 
+#define VECTOR_SIZE 32
+
+#include <immintrin.h>
 #include <stdint.h>
 
 // TODO: TOKEN_TYPE: ADD 2 byte punctuators
@@ -54,7 +57,18 @@ char* token_to_string(const Token token);
 void print_tokens(const TokenArray tok_array);
 
 TokenArray create_empty_token_array(uint64_t capacity);
-void append_token(TokenArray *tok_list, Token token);
+void append_token(TokenArray *tok_array, Token token);
+
+/**
+ * Append list of tokens stored in __m256i vectors.
+ *
+ * @param tok_array The array to which we append.
+ * @param types A left-packed __m256i vector with the tokens types.
+ * @param locs A left-packed __m256i vector with the tokens location.
+ * @param size Number of tokens to append.
+ */
+void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size);
+
 void free_token_array(TokenArray tok_list);
 
 #endif //TOKENS_H

@@ -78,8 +78,8 @@ void print_tokens(const TokenArray tok_array) {
 }
 
 TokenArray create_empty_token_array(uint64_t capacity) {
-    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType));
-    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t));
+    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType) + VECTOR_SIZE);
+    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t) + VECTOR_SIZE);
 
     if (tokens_types == NULL || token_locs == NULL) {
         fprintf(stderr, "Memory allocation failure.\n");
@@ -94,10 +94,24 @@ TokenArray create_empty_token_array(uint64_t capacity) {
     return tok_array;
 }
 
-void append_token(TokenArray *tok_list, Token token) {
-    tok_list->token_types[tok_list->size] = token.type;
-    tok_list->token_locs[tok_list->size] = token.loc;
-    ++tok_list->size;
+void append_token(TokenArray *tok_array, Token token) {
+    tok_array->token_types[tok_array->size] = token.type;
+    tok_array->token_locs[tok_array->size] = token.loc;
+    ++tok_array->size;
+}
+
+void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size) {
+    _mm256_storeu_si256(
+        (__m256i *) (tok_array->token_types + tok_array->size),
+        types
+    );
+
+    _mm256_storeu_si256(
+        (__m256i *) (tok_array->token_locs + tok_array->size),
+        locs
+    );
+
+    tok_array->size += size;
 }
 
 void free_token_array(TokenArray tok_list) {

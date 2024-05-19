@@ -1,8 +1,6 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <immintrin.h>
-
 #include "tokens.h"
 
 /**
@@ -16,15 +14,25 @@
 TokenArray lex(char *input, long input_size);
 
 /**
+ * Parallel Bits Extract (PEXT) on 256 bit vectors.
+ *
+ * @param vector A __m256i vector from which it extracts.
+ * @param mask A __m256i mask for each bit to extract.
+ * @param size A pointer to an integer where the number of elements
+ *  extracted is stored.
+ */
+void mm256_pext(__m256i *vector, __m256i mask, int *size);
+
+/**
  * Finds indices of even values that mark the start of tokens.
  *
- * @param vector An __m256i vector to search for even values.
+ * @param token_tags An __m256i vector to search for even values.
  * @param token_indices A pointer to an uint8_t array where indices
  *  are stored.
- * @param size A pointer to a short where the number of even numbers
- *  is stored.
+ * @param size A pointer to an int where the number of tokens is
+ *  stored.
  */
-void find_token_indices(__m256i vector, uint8_t *token_indices, int *size);
+void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
 __m256i run_sublexers(char *input);
 

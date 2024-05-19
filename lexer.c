@@ -1,5 +1,3 @@
-#define VECTOR_SIZE 32
-
 #include "lexer.h"
 #include "print_utils.c"
 
@@ -12,57 +10,49 @@ TokenArray lex(char *input, long input_size) {
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
-        const __m256i tags = run_sublexers(curr_input);
-        const uint8_t* tags_array = (uint8_t*) &tags;
+        __m256i tags = run_sublexers(curr_input + i);
 
         // Traverse tags
         int size;
-        uint8_t indices[VECTOR_SIZE];
-        find_token_indices(tags, indices, &size);
+        __m256i indices;
+        find_token_indices(&tags, &indices, &size);
 
         // Add tokens
-        for (uint8_t j = 0; j < size; ++j) {
-            const uint8_t loc = indices[j];
-
-            append_token(
-                &tokens,
-                create_token(
-                    tags_array[loc],
-                    i + loc
-                )
-            );
-        }
-
-        curr_input += VECTOR_SIZE;
+        append_tokens(&tokens, tags, indices, size);
     }
 
     return tokens;
 }
 
-void find_token_indices(__m256i vector, uint8_t *token_indices, int *size) {
+void mm256_pext(__m256i *vector, __m256i mask, int *size) {
+    // Split vectors in 64bit segments that can be used by popcnt and pext
+    const uint64_t *vector_64 = (uint64_t *) vector;
+    const uint64_t *mask_64 = (uint64_t *) &mask;
+
+    *size = 0;
+    for (int i = 0; i < 4; ++i) {
+        const uint64_t temp = _pext_u64(vector_64[i], mask_64[i]);
+
+        *(uint64_t*)((uint8_t *) vector + *size) = temp; // Concatenate the next indices
+
+        *size += _mm_popcnt_u64(mask_64[i]) >> 3;
+    }
+}
+
+void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size) {
     // Get mask of non-zero numbers
-    __m256i mask = _mm256_cmpeq_epi8(vector, _mm256_setzero_si256());
+    __m256i mask = _mm256_cmpeq_epi8(*token_tags, _mm256_setzero_si256());
     mask = _mm256_xor_si256(mask, _mm256_set1_epi32(-1));
 
-    __m256i indices = _mm256_setr_epi8(
+    *token_indices = _mm256_setr_epi8(
         0, 1, 2, 3, 4, 5, 6, 7,
         8, 9, 10, 11, 12, 13, 14, 15,
         16, 17, 18, 19, 20, 21, 22, 23,
         24, 25, 26, 27, 28, 29, 30, 31
     );
 
-    // Split vectors in 64bit segments that can be used by popcnt and pext
-    uint64_t *indices_64 = (uint64_t *) &indices;
-    uint64_t *mask_64 = (uint64_t *) &mask;
-
-    *size = 0;
-    for (int i = 0; i < 4; ++i) {
-        uint64_t temp = _pext_u64(indices_64[i], mask_64[i]);
-
-        *(uint64_t*)(token_indices + *size) = temp; // Concatenate the next indices
-
-        *size += _mm_popcnt_u64(mask_64[i]) >> 3;
-    }
+    mm256_pext(token_indices, mask, size);
+    mm256_pext(token_tags, mask, size);
 }
 
 __m256i run_sublexers(char *input) {
