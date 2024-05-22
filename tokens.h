@@ -6,7 +6,6 @@
 #include <immintrin.h>
 #include <stdint.h>
 
-// TODO: TOKEN_TYPE: ADD 2 byte punctuators
 typedef enum : uint8_t {
     // One byte punctuators
     TOK_L_PAREN = 40,   // (
@@ -35,7 +34,29 @@ typedef enum : uint8_t {
     TOK_COLON = 58,     // :
     // TOK_HASH,        // # (Ignored: handled by preprocessing)
 
-    TOK_EOF = 0,        // End-of-file
+    // Two byte punctuators
+    TOK_AMP_AMP = 200,          // &&
+    TOK_GREATER_EQUAL = 201,    // >=
+    TOK_LESS_EQUAL = 202,       // <=
+    TOK_EQUAL_EQUAL = 203,      // ==
+    TOK_EXCLAIM_EQUAL = 204,    // !=
+    TOK_PIPE_PIPE = 205,        // ||
+    TOK_PLUS_EQUAL = 206,       // +=
+    TOK_MINUS_EQUAL = 207,      // -=
+    TOK_STAR_EQUAL = 208,       // *=
+    TOK_SLASH_EQUAL = 209,      // /=
+    TOK_CARET_EQUAL = 210,      // ^=
+    TOK_PIPE_EQUAL = 211,       // |=
+    TOK_PERCENT_EQUAL = 212,    // %=
+    TOK_AMP_EQUAL = 213,        // &=
+    TOK_PLUS_PLUS = 214,        // ++
+    TOK_MINUS_MINUS = 215,      // --
+    TOK_GREATER_GREATER = 216,  // >>
+    TOK_LESS_LESS = 217,        // <<
+    TOK_ARROW = 218,            // ->
+    // TOK_HASH_HASH,       // ## (Ignored: handled by preprocessing)
+
+    TOK_EOF = 0,         // End-of-file
 } TokenType;
 
 typedef struct Token Token;

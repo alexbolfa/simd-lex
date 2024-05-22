@@ -5,12 +5,14 @@
 #include <stdlib.h>
 
 TokenArray lex(char *input, long input_size) {
-    TokenArray tokens = create_empty_token_array(input_size);
-    char *curr_input = input;
+    TokenArray tokens = create_empty_token_array(input_size + 4);
+
+    __m256i current_vec = load_vector(input);
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
-        __m256i tags = run_sublexers(curr_input + i);
+        __m256i next_vec = load_vector(input + i + VECTOR_SIZE);
+        __m256i tags = run_sublexers(current_vec, &next_vec);
 
         // Traverse tags
         int size;
@@ -19,6 +21,9 @@ TokenArray lex(char *input, long input_size) {
 
         // Add tokens
         append_tokens(&tokens, tags, indices, size);
+
+        // Swap vectors
+        current_vec = next_vec;
     }
 
     return tokens;
@@ -61,12 +66,12 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size) 
     mm256_pext(token_tags, mask, size);
 }
 
-__m256i run_sublexers(char *input) {
-    const __m256i vector = load_vector(input);
+__m256i run_sublexers(__m256i current_vec, __m256i *next_vec) {
     __m256i tags = _mm256_setzero_si256();
 
     // Run all sub lexers
-    one_byte_punct_sub_lex(vector, &tags);
+    one_byte_punct_sub_lex(current_vec, &tags);
+    two_byte_punct_sub_lex(current_vec, next_vec, &tags);
 
     return tags;
 }
@@ -113,8 +118,146 @@ void one_byte_punct_sub_lex(__m256i vector, __m256i *tags) {
     *tags = _mm256_blendv_epi8(*tags, vector, mask);
 }
 
-void two_byte_punct_sub_lex(__m256i vector, __m256i *tags) {
+__m256i look_ahead_one(__m256i current_vec, __m256i next_vec) {
+    return _mm256_alignr_epi8(
+        _mm256_permute2x128_si256(next_vec, current_vec, 3),
+        current_vec,
+        1   // Number of bytes that we shift
+    );
+}
 
+__m256i get_mask(const uint32_t mask) {
+    __m256i vmask = _mm256_set1_epi32(mask);
+
+    const __m256i shuffle = _mm256_setr_epi64x(
+        0x0000000000000000, 0x0101010101010101,
+        0x0202020202020202, 0x0303030303030303
+    );
+
+    vmask = _mm256_shuffle_epi8(vmask, shuffle);
+
+    // First diagonal is 0
+    const __m256i bit_mask = _mm256_set1_epi64x(0x7fbfdfeff7fbfdfe);
+
+    vmask = _mm256_or_si256(vmask, bit_mask);
+
+    return _mm256_cmpeq_epi8(vmask, _mm256_set1_epi64x(-1));
+}
+
+void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags) {
+    __m256i shifted_1 = look_ahead_one(current_vec, *next_vec);
+
+    // Search for first bytes: [-, %, *, <, ^, !, &, >, |, =, +, /]
+    const char *first_bytes = ">+^!&*|%<-=/";
+
+    /* NOTE: I expect the compiler to optimize away these variables and
+              run cmpeq in parallel to maximize throughput. */
+    __m256i first_masks[12];
+
+    for (int i = 0; i < 12; ++i) {
+        first_masks[i] = _mm256_cmpeq_epi8(
+            current_vec,
+            _mm256_set1_epi8(first_bytes[i])
+        );
+    }
+
+    // Search for second bytes: [+, &, |, <, -, =, >]
+    const char *second_bytes = "+&|<-=>";
+
+    __m256i second_masks[7];
+
+    for (int i = 0; i < 7; ++i) {
+        second_masks[i] = _mm256_cmpeq_epi8(
+            shifted_1,
+            _mm256_set1_epi8(second_bytes[i])
+        );
+    }
+
+    // Go through all two-byte punctuators
+    const uint8_t punct_data[19][3] = {
+        {4, 1, TOK_AMP_AMP},            // &&
+        {9, 5, TOK_MINUS_EQUAL},        // -=
+        {0, 5, TOK_GREATER_EQUAL},      // >=
+        {4, 5, TOK_AMP_EQUAL},          // &=
+        {9, 6, TOK_ARROW},              // ->
+        {0, 6, TOK_GREATER_GREATER},    // >>
+        {5, 5, TOK_STAR_EQUAL},         // *=
+        {11, 5, TOK_SLASH_EQUAL},       // /=
+        {2, 5, TOK_CARET_EQUAL},        // ^=
+        {1, 0, TOK_PLUS_PLUS},          // ++
+        {8, 3, TOK_LESS_LESS},          // <<
+        {6, 5, TOK_PIPE_EQUAL},         // |=
+        {1, 5, TOK_PLUS_EQUAL},         // +=
+        {8, 5, TOK_LESS_EQUAL},         // <=
+        {6, 2, TOK_PIPE_PIPE},          // ||
+        {9, 4, TOK_MINUS_MINUS},        // --
+        {10, 5, TOK_EQUAL_EQUAL},       // ==
+        {3, 5, TOK_EXCLAIM_EQUAL},      // !=
+        {7, 5, TOK_PERCENT_EQUAL},      // %=
+    };
+
+    // Store temporary found tags here to not delete from *tags
+    __m256i temp_tags = _mm256_setzero_si256();
+
+    /* NOTE: I expect the compiler to optimize away loop local variables and
+              run _mm256_blendv_epi8() in parallel to maximize throughput. */
+
+    /* ? : Maybe merging the masks and looking for evenly distanced starting positions
+            is at least just as fast. It is definitely cleaner. */
+
+    // Traverse punctuators that don't overlap with others
+    for (int i = 0; i < 19; ++i) {
+        const uint8_t x = punct_data[i][0];
+        const uint8_t y = punct_data[i][1];
+        const TokenType type = punct_data[i][2];
+
+        // Mask where this punct is found
+        __m256i mask = _mm256_and_si256(first_masks[x], second_masks[y]);
+
+        // Update temporary tags (without overlapping second byte)
+        temp_tags = _mm256_blendv_epi8(
+            temp_tags,
+            _mm256_set1_epi8(type),
+            mask
+        );
+    }
+
+    // Remove middle tag in series of three consecutive tags
+    uint32_t mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));
+
+    temp_tags = _mm256_blendv_epi8(
+        temp_tags,
+        _mm256_setzero_si256(),
+        get_mask(mask & (mask << 1) & (mask >> 1))
+    );
+
+    // Remove right tag in series of two consecutive tags
+    mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));
+
+    temp_tags = _mm256_blendv_epi8(
+        temp_tags,
+        _mm256_setzero_si256(),
+        get_mask(mask & (mask << 1))
+    );
+
+    mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));    // `mask` does not contain consecutive ones
+
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        temp_tags,
+        get_mask(mask | (mask << 1))
+    );
+
+    // Remove first byte from next vector if it is a continuation of a current symbol
+    const uint64_t carry = ((mask & (1 << 31)) >> 31) * 0xFF;
+
+    *next_vec = _mm256_and_si256(
+            *next_vec,
+            _mm256_setr_epi64x(
+            0xffffffffffffffff - carry, 0xffffffffffffffff,
+            0xffffffffffffffff,  0xffffffffffffffff
+            )
+        );
 }
 
 __m256i load_vector(const char* pos) {
@@ -147,7 +290,7 @@ char* read_file(const char *filename, long *file_size, long pad_multiple) {
     // Allocate memory multiple of pad_multiple
     long size = *file_size + 1;
     long padding = (pad_multiple - (size % pad_multiple)) % pad_multiple;
-    char *file_content = (char *) malloc(size + padding);
+    char *file_content = (char *) malloc(size + padding + VECTOR_SIZE);
 
     if (!file_content) {
         fprintf(stderr, "Memory allocation failed.\n");

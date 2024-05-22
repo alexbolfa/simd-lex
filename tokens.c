@@ -8,9 +8,8 @@ Token create_token(TokenType type, uint32_t loc) {
 }
 
 char* token_to_string(const Token token) {
-    // TODO: token_to_string: ADD 2 byte punctuators
     switch (token.type) {
-        // Punctuators
+        // One byte punctuators
         case TOK_L_PAREN:
             return "l_paren  (";
         case TOK_R_PAREN:
@@ -60,6 +59,46 @@ char* token_to_string(const Token token) {
         case TOK_COLON:
             return "colon  :";
 
+        // Two byte punctuators
+        case TOK_AMP_AMP:
+            return "ampamp  &&";
+        case TOK_GREATER_EQUAL:
+            return "greaterequal  >=";
+        case TOK_LESS_EQUAL:
+            return "lessequal  <=";
+        case TOK_EQUAL_EQUAL:
+            return "equalequal  ==";
+        case TOK_EXCLAIM_EQUAL:
+            return "exclaimequal  !=";
+        case TOK_PIPE_PIPE:
+            return "pipepipe  ||";
+        case TOK_PLUS_EQUAL:
+            return "plusequal  +=";
+        case TOK_MINUS_EQUAL:
+            return "minusequal  -=";
+        case TOK_STAR_EQUAL:
+            return "starequal  *=";
+        case TOK_SLASH_EQUAL:
+            return "slashequal  /=";
+        case TOK_CARET_EQUAL:
+            return "caretequal  ^=";
+        case TOK_PIPE_EQUAL:
+            return "pipeequal  |=";
+        case TOK_PERCENT_EQUAL:
+            return "percentequal  %=";
+        case TOK_AMP_EQUAL:
+            return "ampequal  &=";
+        case TOK_PLUS_PLUS:
+            return "plusplus  ++";
+        case TOK_MINUS_MINUS:
+            return "minusminus  --";
+        case TOK_GREATER_GREATER:
+            return "greatergreater  >>";
+        case TOK_LESS_LESS:
+            return "lessless  <<";
+        case TOK_ARROW:
+            return "arrow  ->";
+
         case TOK_EOF:
             return "eof  ";
 
@@ -78,8 +117,8 @@ void print_tokens(const TokenArray tok_array) {
 }
 
 TokenArray create_empty_token_array(uint64_t capacity) {
-    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType) + VECTOR_SIZE);
-    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t) + VECTOR_SIZE);
+    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType));
+    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t));
 
     if (tokens_types == NULL || token_locs == NULL) {
         fprintf(stderr, "Memory allocation failure.\n");

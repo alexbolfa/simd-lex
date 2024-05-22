@@ -42,19 +42,49 @@ __m256i non_zero_mask(const __m256i vector);
  */
 void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
-__m256i run_sublexers(char *input);
+__m256i run_sublexers(__m256i current_vec, __m256i *next_vec);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
 /**
  * Lexes single byte punctuators and overlays their ASCII code to a
- *  given vector of tags.
+ *  given vector of tags, marking start of tokens.
  *
- * @param vector
- * @param tags
+ * @param vector A __m256i vector to tokenize.
+ * @param tags A __m256i holding token tags.
  * @return
  */
 void one_byte_punct_sub_lex(__m256i vector, __m256i *tags);
+
+/**
+ * Shift current vector by one to the left, adding the first element
+ *  of the the next vector at the end.
+ *
+ * @param current_vec Left __m256i vector to concatenate.
+ * @param next_vec Right __m256i vector to concatenate.
+ * @return Left vector shifted to left.
+ */
+__m256i look_ahead_one(__m256i current_vec, __m256i next_vec);
+
+/**
+ * Transform bit mask into byte mask.
+ *
+ * @author Evgeny Kluev & Satya Arjunan
+ * @param mask An int bitmask.
+ * @return A byte mask corresponding to input.
+ */
+__m256i get_mask(const uint32_t mask);
+
+/**
+ * Lexes two byte punctuators and overlays special code to a
+ *  given vector of tags, marking start of tokens.
+ *
+ * @param current_vec A __m256i vector to tokenize.
+ * @param next_vec A __m256i vector to the next batch of characters.
+ * @param tags A __m256i holding token tags.
+ * @return
+ */
+void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags);
 
 __m256i load_vector(const char* pos);
 
