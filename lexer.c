@@ -145,107 +145,99 @@ __m256i get_mask(const uint32_t mask) {
 }
 
 void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags) {
-    __m256i shifted_1 = look_ahead_one(current_vec, *next_vec);
+    const __m256i shifted_1 = look_ahead_one(current_vec, *next_vec);
 
     // Search for first bytes: [-, %, *, <, ^, !, &, >, |, =, +, /]
-    const char *first_bytes = ">+^!&*|%<-=/";
-
     /* NOTE: I expect the compiler to optimize away these variables and
               run cmpeq in parallel to maximize throughput. */
-    __m256i first_masks[12];
+
+    const char *first_bytes = ">+^!&*|%<-=/";
+    uint32_t first_masks[12];
 
     for (int i = 0; i < 12; ++i) {
-        first_masks[i] = _mm256_cmpeq_epi8(
-            current_vec,
-            _mm256_set1_epi8(first_bytes[i])
+        first_masks[i] = _mm256_movemask_epi8(
+            _mm256_cmpeq_epi8(
+                current_vec,
+                _mm256_set1_epi8(first_bytes[i])
+            )
         );
     }
 
     // Search for second bytes: [+, &, |, <, -, =, >]
     const char *second_bytes = "+&|<-=>";
-
-    __m256i second_masks[7];
+    uint32_t second_masks[7];
 
     for (int i = 0; i < 7; ++i) {
-        second_masks[i] = _mm256_cmpeq_epi8(
-            shifted_1,
-            _mm256_set1_epi8(second_bytes[i])
+        second_masks[i] = _mm256_movemask_epi8(
+                _mm256_cmpeq_epi8(
+                shifted_1,
+                _mm256_set1_epi8(second_bytes[i])
+            )
         );
     }
 
     // Go through all two-byte punctuators
-    const uint8_t punct_data[19][3] = {
-        {4, 1, TOK_AMP_AMP},            // &&
-        {9, 5, TOK_MINUS_EQUAL},        // -=
-        {0, 5, TOK_GREATER_EQUAL},      // >=
-        {4, 5, TOK_AMP_EQUAL},          // &=
-        {9, 6, TOK_ARROW},              // ->
-        {0, 6, TOK_GREATER_GREATER},    // >>
-        {5, 5, TOK_STAR_EQUAL},         // *=
-        {11, 5, TOK_SLASH_EQUAL},       // /=
-        {2, 5, TOK_CARET_EQUAL},        // ^=
-        {1, 0, TOK_PLUS_PLUS},          // ++
-        {8, 3, TOK_LESS_LESS},          // <<
-        {6, 5, TOK_PIPE_EQUAL},         // |=
-        {1, 5, TOK_PLUS_EQUAL},         // +=
-        {8, 5, TOK_LESS_EQUAL},         // <=
-        {6, 2, TOK_PIPE_PIPE},          // ||
-        {9, 4, TOK_MINUS_MINUS},        // --
-        {10, 5, TOK_EQUAL_EQUAL},       // ==
-        {3, 5, TOK_EXCLAIM_EQUAL},      // !=
-        {7, 5, TOK_PERCENT_EQUAL},      // %=
+    const uint8_t punct_data[19][2] = {
+        {4, 1},     // &&
+        {9, 5},     // -=
+        {0, 5},     // >=
+        {4, 5},     // &=
+        {9, 6},     // ->
+        {0, 6},     // >>
+        {5, 5},     // *=
+        {11, 5},    // /=
+        {2, 5},     // ^=
+        {1, 0},     // ++
+        {8, 3},     // <<
+        {6, 5},     // |=
+        {1, 5},     // +=
+        {8, 5},     // <=
+        {6, 2},     // ||
+        {9, 4},     // --
+        {10, 5},    // ==
+        {3, 5},     // !=
+        {7, 5},     // %=
     };
 
     // Store temporary found tags here to not delete from *tags
-    __m256i temp_tags = _mm256_setzero_si256();
+    uint32_t mask = 0;
 
-    /* NOTE: I expect the compiler to optimize away loop local variables and
-              run _mm256_blendv_epi8() in parallel to maximize throughput. */
-
-    /* ? : Maybe merging the masks and looking for evenly distanced starting positions
-            is at least just as fast. It is definitely cleaner. */
-
-    // Traverse punctuators that don't overlap with others
+    /* NOTE: I expect the compiler to optimize away loop local variables. */
     for (int i = 0; i < 19; ++i) {
         const uint8_t x = punct_data[i][0];
         const uint8_t y = punct_data[i][1];
-        const TokenType type = punct_data[i][2];
 
-        // Mask where this punct is found
-        __m256i mask = _mm256_and_si256(first_masks[x], second_masks[y]);
-
-        // Update temporary tags (without overlapping second byte)
-        temp_tags = _mm256_blendv_epi8(
-            temp_tags,
-            _mm256_set1_epi8(type),
-            mask
-        );
+        // Update temporary tags
+        mask = mask | (first_masks[x] & second_masks[y]);
     }
 
     // Remove middle tag in series of three consecutive tags
-    uint32_t mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));
-
-    temp_tags = _mm256_blendv_epi8(
-        temp_tags,
-        _mm256_setzero_si256(),
-        get_mask(mask & (mask << 1) & (mask >> 1))
-    );
+    mask = mask ^ (mask & (mask << 1) & (mask >> 1));
 
     // Remove right tag in series of two consecutive tags
-    mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));
+    mask = mask ^ (mask & (mask << 1));
 
-    temp_tags = _mm256_blendv_epi8(
-        temp_tags,
-        _mm256_setzero_si256(),
-        get_mask(mask & (mask << 1))
+    // Get token types
+    __m256i tok_types = _mm256_sub_epi8(    // current_vec + shifted_1 - 2
+        _mm256_adds_epu8(
+            current_vec,
+            shifted_1
+        ),
+        _mm256_set1_epi8(2)
     );
 
-    mask = _mm256_movemask_epi8(non_zero_mask(temp_tags));    // `mask` does not contain consecutive ones
-
+    // Update tags
     *tags = _mm256_blendv_epi8(
         *tags,
-        temp_tags,
-        get_mask(mask | (mask << 1))
+        tok_types,
+        get_mask(mask)
+    );
+
+    // Remove second byte's tag
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_setzero_si256(),
+        get_mask(mask << 1)
     );
 
     // Remove first byte from next vector if it is a continuation of a current symbol
@@ -256,8 +248,8 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
             _mm256_setr_epi64x(
             0xffffffffffffffff - carry, 0xffffffffffffffff,
             0xffffffffffffffff,  0xffffffffffffffff
-            )
-        );
+        )
+    );
 }
 
 __m256i load_vector(const char* pos) {

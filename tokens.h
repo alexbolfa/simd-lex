@@ -35,25 +35,25 @@ typedef enum : uint8_t {
     // TOK_HASH,        // # (Ignored: handled by preprocessing)
 
     // Two byte punctuators
-    TOK_AMP_AMP = 200,          // &&
-    TOK_GREATER_EQUAL = 201,    // >=
-    TOK_LESS_EQUAL = 202,       // <=
-    TOK_EQUAL_EQUAL = 203,      // ==
-    TOK_EXCLAIM_EQUAL = 204,    // !=
-    TOK_PIPE_PIPE = 205,        // ||
-    TOK_PLUS_EQUAL = 206,       // +=
-    TOK_MINUS_EQUAL = 207,      // -=
-    TOK_STAR_EQUAL = 208,       // *=
-    TOK_SLASH_EQUAL = 209,      // /=
-    TOK_CARET_EQUAL = 210,      // ^=
-    TOK_PIPE_EQUAL = 211,       // |=
-    TOK_PERCENT_EQUAL = 212,    // %=
-    TOK_AMP_EQUAL = 213,        // &=
-    TOK_PLUS_PLUS = 214,        // ++
-    TOK_MINUS_MINUS = 215,      // --
-    TOK_GREATER_GREATER = 216,  // >>
-    TOK_LESS_LESS = 217,        // <<
-    TOK_ARROW = 218,            // ->
+    TOK_AMP_AMP = 74,           // &&
+    TOK_GREATER_EQUAL = 121,    // >=
+    TOK_LESS_EQUAL = 119,       // <=
+    TOK_EQUAL_EQUAL = 120,      // ==
+    TOK_EXCLAIM_EQUAL = 92,     // !=
+    TOK_PIPE_PIPE = 246,        // ||
+    TOK_PLUS_EQUAL = 102,       // +=
+    TOK_MINUS_EQUAL = 104,      // -=
+    TOK_STAR_EQUAL = 101,       // *=
+    TOK_SLASH_EQUAL = 106,      // /=
+    TOK_CARET_EQUAL = 153,      // ^=
+    TOK_PIPE_EQUAL = 183,       // |=
+    TOK_PERCENT_EQUAL = 96,     // %=
+    TOK_AMP_EQUAL = 97,         // &=
+    TOK_PLUS_PLUS = 84,         // ++
+    TOK_MINUS_MINUS = 88,       // --
+    TOK_GREATER_GREATER = 122,  // >>
+    TOK_LESS_LESS = 118,        // <<
+    TOK_ARROW = 105,            // ->
     // TOK_HASH_HASH,       // ## (Ignored: handled by preprocessing)
 
     TOK_EOF = 0,         // End-of-file
