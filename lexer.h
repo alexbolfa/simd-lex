@@ -46,6 +46,8 @@ __m256i run_sublexers(__m256i current_vec, __m256i *next_vec);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
+__m256i mm256_cmpistrm_any(__m128i match, __m256i vector);
+
 /**
  * Lexes single byte punctuators and overlays their ASCII code to a
  *  given vector of tags, marking start of tokens.

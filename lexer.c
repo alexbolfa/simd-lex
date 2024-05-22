@@ -91,6 +91,20 @@ TokenArray lex_file(char *file_path, char **file_content) {
     return tokens;
 }
 
+__m256i mm256_cmpistrm_any(__m128i match, __m256i vector) {
+    // Split vector in two for `_mm_cmpistrm`
+    __m128i low_vector = _mm256_extractf128_si256(vector, 0);
+    __m128i high_vector = _mm256_extractf128_si256(vector, 1);
+
+    __m128i low_outside_range_mask = _mm_cmpistrm(match, low_vector, (1 << 6));
+    __m128i high_outside_range_mask = _mm_cmpistrm(match, high_vector, (1 << 6));
+
+    return _mm256_set_m128i(
+        high_outside_range_mask,
+        low_outside_range_mask
+    );
+}
+
 void one_byte_punct_sub_lex(__m256i vector, __m256i *tags) {
     // Punctuators with ASCII in range [40, 47] i.e. ()*+,-./
     __m256i mask = range_mask(vector, 40, 47);
@@ -99,20 +113,11 @@ void one_byte_punct_sub_lex(__m256i vector, __m256i *tags) {
     // excluding preprocessing operator '#'
     __m128i match = _mm_loadu_si128((__m128i*)"!%&:;<=>?[]^{|}~");
 
-    // Split vector in two for `_mm_cmpistrm`
-    __m128i low_vector = _mm256_extractf128_si256(vector, 0);
-    __m128i high_vector = _mm256_extractf128_si256(vector, 1);
-
-    __m128i low_outside_range_mask = _mm_cmpistrm(match, low_vector, (1 << 6));
-    __m128i high_outside_range_mask = _mm_cmpistrm(match, high_vector, (1 << 6));
-
-    __m256i outside_range_mask = _mm256_set_m128i(
-        high_outside_range_mask,
-        low_outside_range_mask
-    );
-
     // Combines masks
-    mask = _mm256_or_si256(mask, outside_range_mask);
+    mask = _mm256_or_si256(
+        mask,
+        mm256_cmpistrm_any(match, vector)
+    );
 
     // Overlay found one-byte punctators over tags
     *tags = _mm256_blendv_epi8(*tags, vector, mask);
