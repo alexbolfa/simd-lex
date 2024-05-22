@@ -241,11 +241,12 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
     );
 
     // Remove first byte from next vector if it is a continuation of a current symbol
-    const uint64_t carry = ((mask & (1 << 31)) >> 31) * 0xFF;
+    uint8_t carry = ((mask & (1 << 31)) >> 31) * 0xFF;
 
-    *next_vec = _mm256_and_si256(
-            *next_vec,
-            _mm256_setr_epi64x(
+    *next_vec = _mm256_blendv_epi8(
+        _mm256_set1_epi8(32),   // Space ASCII value
+        *next_vec,
+        _mm256_setr_epi64x(
             0xffffffffffffffff - carry, 0xffffffffffffffff,
             0xffffffffffffffff,  0xffffffffffffffff
         )
