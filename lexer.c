@@ -11,34 +11,23 @@ TokenArray lex(char *input, long input_size) {
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
-        uint64_t token_ends_mask = 0;
         __m256i next_vec = load_vector(input + i + VECTOR_SIZE);
-
-        __m256i tags = run_sublexers(current_vec, &next_vec, &token_ends_mask);
+        __m256i tags = run_sublexers(&current_vec, &next_vec);
 
         // Traverse tags
         int size;
         __m256i indices;
         find_token_indices(&tags, &indices, &size);
 
-        // Add tokens
+        // Handle results
         append_tokens(&tokens, tags, indices, size, i);
-
-        // Adjust input string
-        mark_token_ends(input, current_vec, get_mask(token_ends_mask));
+        _mm256_storeu_si256((__m256i *)input, current_vec);
 
         // Swap vectors
         current_vec = next_vec;
     }
 
     return tokens;
-}
-
-void mark_token_ends(char *dst, __m256i input, __m256i mask) {
-    __m256i result = _mm256_andnot_si256(mask, input);
-
-    // Store to destination
-    _mm256_storeu_si256((__m256i *)dst, result);
 }
 
 void mm256_pext(__m256i *vector, __m256i mask, int *size) {
@@ -78,28 +67,36 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size) 
     mm256_pext(token_tags, mask, size);
 }
 
-__m256i run_sublexers(__m256i current_vec, __m256i *next_vec, uint64_t *token_ends) {
-    __m256i tags = _mm256_setzero_si256();
-
-    // Run all sub lexers
-    one_byte_punct_sub_lex(current_vec, &tags, token_ends);
-    three_byte_punct_sub_lex(&current_vec, next_vec, &tags, token_ends);
-    two_byte_punct_sub_lex(current_vec, next_vec, &tags, token_ends);
-
-    // Update token ends (add white spaces)
+void replace_white_space(__m256i* vector) {
     __m256i white_spaces_mask = _mm256_cmpeq_epi8(
-        current_vec,
-        _mm256_set1_epi8(' ')
-    );
+       *vector,
+       _mm256_set1_epi8(' ')
+   );
 
     white_spaces_mask = _mm256_or_si256(
         white_spaces_mask,
         _mm256_cmpeq_epi8(
-            current_vec,
+            *vector,
             _mm256_set1_epi8('\n')
         )
     );
-    *token_ends |= _mm256_movemask_epi8(white_spaces_mask);
+
+    *vector = _mm256_blendv_epi8(
+        *vector,
+        _mm256_setzero_si256(),
+        white_spaces_mask
+    );
+}
+
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec) {
+    __m256i tags = _mm256_setzero_si256();
+
+    // Lex punctuators
+    three_byte_punct_sub_lex(current_vec, next_vec, &tags);
+    two_byte_punct_sub_lex(current_vec, next_vec, &tags);
+    one_byte_punct_sub_lex(current_vec, &tags);
+
+    replace_white_space(current_vec);
 
     return tags;
 }
@@ -133,9 +130,9 @@ __m256i mm256_cmpistrm_any(__m128i match, __m256i vector) {
     );
 }
 
-void one_byte_punct_sub_lex(__m256i vector, __m256i *tags, uint64_t *token_ends) {
+void one_byte_punct_sub_lex(__m256i *current_vec, __m256i *tags) {
     // Punctuators with ASCII in range [40, 47] i.e. ()*+,-./
-    __m256i mask = range_mask(vector, 40, 47);
+    __m256i mask = range_mask(*current_vec, 40, 47);
 
     // Punctuators outside [40, 47] range i.e. !%&:;<=>?[]^{|}~
     // excluding preprocessing operator '#'
@@ -144,12 +141,18 @@ void one_byte_punct_sub_lex(__m256i vector, __m256i *tags, uint64_t *token_ends)
     // Combines masks
     mask = _mm256_or_si256(
         mask,
-        mm256_cmpistrm_any(match, vector)
+        mm256_cmpistrm_any(match, *current_vec)
     );
 
     // Overlay found one-byte punctators over tags
-    *tags = _mm256_blendv_epi8(*tags, vector, mask);
-    *token_ends |= _mm256_movemask_epi8(mask);
+    *tags = _mm256_blendv_epi8(*tags, *current_vec, mask);
+
+    // Remove symbols found
+    *current_vec = _mm256_blendv_epi8(
+        *current_vec,
+        _mm256_setzero_si256(),
+        mask
+    );
 }
 
 __m256i look_ahead_one(__m256i current_vec, __m256i next_vec) {
@@ -197,8 +200,8 @@ void remove_prefix_64(__m256i *vector, uint64_t prefix) {
     );
 }
 
-void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags, uint64_t *token_ends) {
-    const __m256i shifted_1 = look_ahead_one(current_vec, *next_vec);
+void two_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags) {
+    const __m256i shifted_1 = look_ahead_one(*current_vec, *next_vec);
 
     // Search for first bytes: [-, %, *, <, ^, !, &, >, |, =, +, /]
     /* NOTE: I expect the compiler to optimize away these variables and
@@ -210,7 +213,7 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
     for (int i = 0; i < 12; ++i) {
         first_masks[i] = _mm256_movemask_epi8(
             _mm256_cmpeq_epi8(
-                current_vec,
+                *current_vec,
                 _mm256_set1_epi8(first_bytes[i])
             )
         );
@@ -273,7 +276,7 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
     // Get token types
     __m256i tok_types = _mm256_sub_epi8(    // current_vec + shifted_1 - 2
         _mm256_adds_epu8(
-            current_vec,
+            *current_vec,
             shifted_1
         ),
         _mm256_set1_epi8(2)
@@ -293,14 +296,20 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
         get_mask(mask << 1)
     );
 
+    // Remove symbols found
+    *current_vec = _mm256_blendv_epi8(
+        *current_vec,
+        _mm256_setzero_si256(),
+        get_mask(mask | mask << 1)
+    );
+
     // Remove first byte from next vector if it is a continuation of a current symbol
     uint8_t carry = ((mask & (1 << 31)) >> 31) * 0xFF;
 
     remove_prefix_64(next_vec, carry);
-    *token_ends |= mask | mask << 1;
 }
 
-void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags, uint64_t *token_ends) {
+void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags) {
     // Lex [..., <<=, >>=]
     __m256i shifted_one = look_ahead_one(*current_vec, *next_vec);
     __m256i shifted_two = look_ahead_two(*current_vec, *next_vec);
@@ -392,7 +401,6 @@ void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *
                         + ((mask & (1 << 30)) >> 30) * 0xFF;    // Remove first byte of next_vec
 
     remove_prefix_64(next_vec, carry);
-    *token_ends |= mask | mask << 1 | mask << 2;
 }
 
 __m256i load_vector(const char* pos) {
