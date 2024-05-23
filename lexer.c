@@ -71,6 +71,7 @@ __m256i run_sublexers(__m256i current_vec, __m256i *next_vec) {
 
     // Run all sub lexers
     one_byte_punct_sub_lex(current_vec, &tags);
+    three_byte_punct_sub_lex(&current_vec, next_vec, &tags);
     two_byte_punct_sub_lex(current_vec, next_vec, &tags);
 
     return tags;
@@ -127,7 +128,15 @@ __m256i look_ahead_one(__m256i current_vec, __m256i next_vec) {
     return _mm256_alignr_epi8(
         _mm256_permute2x128_si256(next_vec, current_vec, 3),
         current_vec,
-        1   // Number of bytes that we shift
+        1   // Number of bytes that we shift (compile constant)
+    );
+}
+
+__m256i look_ahead_two(__m256i current_vec, __m256i next_vec) {
+    return _mm256_alignr_epi8(
+        _mm256_permute2x128_si256(next_vec, current_vec, 3),
+        current_vec,
+        2   // Number of bytes that we shift (compile constant)
     );
 }
 
@@ -147,6 +156,17 @@ __m256i get_mask(const uint32_t mask) {
     vmask = _mm256_or_si256(vmask, bit_mask);
 
     return _mm256_cmpeq_epi8(vmask, _mm256_set1_epi64x(-1));
+}
+
+void remove_prefix_64(__m256i *vector, uint64_t prefix) {
+    *vector = _mm256_blendv_epi8(
+        _mm256_set1_epi8(32),   // Space ASCII value
+        *vector,
+        _mm256_setr_epi64x(
+            0xffffffffffffffff - prefix, 0xffffffffffffffff,
+            0xffffffffffffffff,  0xffffffffffffffff
+        )
+    );
 }
 
 void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags) {
@@ -248,14 +268,101 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
     // Remove first byte from next vector if it is a continuation of a current symbol
     uint8_t carry = ((mask & (1 << 31)) >> 31) * 0xFF;
 
-    *next_vec = _mm256_blendv_epi8(
-        _mm256_set1_epi8(32),   // Space ASCII value
-        *next_vec,
-        _mm256_setr_epi64x(
-            0xffffffffffffffff - carry, 0xffffffffffffffff,
-            0xffffffffffffffff,  0xffffffffffffffff
+    remove_prefix_64(next_vec, carry);
+}
+
+void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags) {
+    // Lex [..., <<=, >>=]
+    __m256i shifted_one = look_ahead_one(*current_vec, *next_vec);
+    __m256i shifted_two = look_ahead_two(*current_vec, *next_vec);
+
+    /* NOTE: I expect the compiler to optimize away these variables and
+              run cmpeq in parallel to maximize throughput. */
+    const char *first_two_bytes = ".<>";
+
+    uint32_t first_masks[3];
+    uint32_t second_masks[3];
+    uint32_t third_mask[2];
+
+    for (int i = 0; i < 3; ++i) {
+        first_masks[i] = _mm256_movemask_epi8(
+            _mm256_cmpeq_epi8(
+                *current_vec,
+                _mm256_set1_epi8(first_two_bytes[i])
+            )
+        );
+
+        second_masks[i] = _mm256_movemask_epi8(
+            _mm256_cmpeq_epi8(
+                shifted_one,
+                _mm256_set1_epi8(first_two_bytes[i])
+            )
+        );
+    }
+
+    const char *third_bytes = ".=";
+
+    for (int i = 0; i < 2; ++i) {
+        third_mask[i] = _mm256_movemask_epi8(
+            _mm256_cmpeq_epi8(
+                shifted_two,
+                _mm256_set1_epi8(third_bytes[i])
+            )
+        );
+    }
+
+    const uint8_t punct_data[3][3] = {
+        {0, 0, 0},  // ...
+        {1, 1, 1},  // <<=
+        {2, 2, 1},  // >>=
+    };
+
+    uint32_t mask = 0;
+
+    /* NOTE: I expect the compiler to optimize away loop local variables. */
+    for (int i = 0; i < 3; ++i) {
+        const uint8_t x = punct_data[i][0];
+        const uint8_t y = punct_data[i][1];
+        const uint8_t z = punct_data[i][2];
+
+        mask = mask | (first_masks[x] & second_masks[y] & third_mask[z]);
+    }
+
+    // current_vec + shifted_one + shifted_two
+    __m256i tok_types = _mm256_add_epi8(
+        *current_vec,
+        _mm256_add_epi8(
+            shifted_one,
+            shifted_two
         )
     );
+
+    // Update tags
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        tok_types,
+        get_mask(mask)
+    );
+
+    // Remove tail bytes tags
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_setzero_si256(),
+        get_mask(mask << 1 | mask << 2)
+    );
+
+    // Remove symbols found
+    *current_vec = _mm256_blendv_epi8(
+        *current_vec,
+        _mm256_setzero_si256(),
+        get_mask(mask | mask << 1 | mask << 2)
+    );
+
+    // Remove characters from next_vec if they are a continuation of a current symbol
+    uint64_t carry = ((mask & (1 << 31)) >> 31) * 0xFFFF        // Remove first two bytes of next_vec
+                        + ((mask & (1 << 30)) >> 30) * 0xFF;    // Remove first byte of next_vec
+
+    remove_prefix_64(next_vec, carry);
 }
 
 __m256i load_vector(const char* pos) {

@@ -99,6 +99,14 @@ char* token_to_string(const Token token) {
         case TOK_ARROW:
             return "arrow  ->";
 
+        // Three byte punctuators
+        case TOK_ELLIPSIS:
+            return "ellipsis  ...";
+        case TOK_LESS_LESS_EQUAL:
+            return "lesslessequal  <<=";
+        case TOK_GREATER_GREATER_EQUAL:
+            return "greatergreaterequal  >>=";
+
         case TOK_EOF:
             return "eof  ";
 

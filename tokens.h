@@ -56,6 +56,11 @@ typedef enum : uint8_t {
     TOK_ARROW = 105,            // ->
     // TOK_HASH_HASH,       // ## (Ignored: handled by preprocessing)
 
+    // Three byte punctuators
+    TOK_ELLIPSIS = 138,                 // ...
+    TOK_LESS_LESS_EQUAL = 181,          // <<=
+    TOK_GREATER_GREATER_EQUAL = 185,    // >>=
+
     TOK_EOF = 0,         // End-of-file
 } TokenType;
 

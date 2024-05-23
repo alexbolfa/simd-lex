@@ -69,6 +69,16 @@ void one_byte_punct_sub_lex(__m256i vector, __m256i *tags);
 __m256i look_ahead_one(__m256i current_vec, __m256i next_vec);
 
 /**
+ * Shift current vector by two to the left, adding the first two
+ *  elements of the the next vector at the end.
+ *
+ * @param current_vec Left __m256i vector to concatenate.
+ * @param next_vec Right __m256i vector to concatenate.
+ * @return Left vector shifted to left.
+ */
+__m256i look_ahead_two(__m256i current_vec, __m256i next_vec);
+
+/**
  * Transform bit mask into byte mask.
  *
  * @author Evgeny Kluev & Satya Arjunan
@@ -76,6 +86,16 @@ __m256i look_ahead_one(__m256i current_vec, __m256i next_vec);
  * @return A byte mask corresponding to input.
  */
 __m256i get_mask(const uint32_t mask);
+
+/**
+ * Remove leading bytes of the first 64 bits according to a
+ *  given mask.
+ *
+ * @param vector A __m256i from which to remove.
+ * @param prefix A uint64_t mask telling us which bits to
+ *  remove from the first 8 bytes of vector.
+ */
+void remove_prefix_64(__m256i *vector, uint64_t prefix);
 
 /**
  * Lexes two byte punctuators and overlays special code to a
@@ -87,6 +107,17 @@ __m256i get_mask(const uint32_t mask);
  * @return
  */
 void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags);
+
+/**
+ * Lexes three byte punctuators and overlays special code to a
+ *  given vector of tags, marking start of tokens.
+ *
+ * @param current_vec A __m256i vector to tokenize.
+ * @param next_vec A __m256i vector to the next batch of characters.
+ * @param tags A __m256i holding token tags.
+ * @return
+ */
+void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags);
 
 __m256i load_vector(const char* pos);
 
