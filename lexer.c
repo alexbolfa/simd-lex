@@ -124,8 +124,8 @@ __m256i mm256_cmpistrm_any(__m128i match, __m256i vector) {
     __m128i low_vector = _mm256_extractf128_si256(vector, 0);
     __m128i high_vector = _mm256_extractf128_si256(vector, 1);
 
-    __m128i low_outside_range_mask = _mm_cmpistrm(match, low_vector, (1 << 6));
-    __m128i high_outside_range_mask = _mm_cmpistrm(match, high_vector, (1 << 6));
+    __m128i low_outside_range_mask = _mm_cmpestrm(match, 16, low_vector, 16, (1 << 6));
+    __m128i high_outside_range_mask = _mm_cmpestrm(match, 16, high_vector, 16, (1 << 6));
 
     return _mm256_set_m128i(
         high_outside_range_mask,
@@ -188,7 +188,7 @@ __m256i get_mask(const uint32_t mask) {
 
 void remove_prefix_64(__m256i *vector, uint64_t prefix) {
     *vector = _mm256_blendv_epi8(
-        _mm256_set1_epi8(32),   // Space ASCII value
+        _mm256_set1_epi8(0),   // Space ASCII value
         *vector,
         _mm256_setr_epi64x(
             0xffffffffffffffff - prefix, 0xffffffffffffffff,
