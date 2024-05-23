@@ -11,7 +11,9 @@ cmake ..
 make
 
 # Execute the built program and capture its output
-./simd_lexer "$SOURCE_FILE" > simd_lexer_output.txt
+./simd_lexer "$SOURCE_FILE" \
+    | awk -F " " '{print $2, "",$3}' \
+    > simd_lexer_output.txt
 
 # Execute the clang command and capture its output
 clang -fsyntax-only -Xclang -dump-tokens "$SOURCE_FILE" 2>&1 \

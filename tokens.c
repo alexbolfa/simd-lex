@@ -120,7 +120,7 @@ void print_tokens(const TokenArray tok_array) {
     for (int i = 0; i < tok_array.size; ++i) {
         Token token = create_token(tok_array.token_types[i], tok_array.token_locs[i]);
 
-        printf("%s\n", token_to_string(token));
+        printf("<loc:%d> %s\n", token.loc, token_to_string(token));
     }
 }
 
@@ -151,18 +151,35 @@ void append_token(TokenArray *tok_array, Token token) {
     ++tok_array->size;
 }
 
-void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size) {
+void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size, uint32_t start_idx) {
     _mm256_storeu_si256(
         (__m256i *) (tok_array->token_types + tok_array->size),
         types
     );
 
-    _mm256_storeu_si256(
-        (__m256i *) (tok_array->token_locs + tok_array->size),
-        locs
-    );
+    uint64_t *locs_64 = (uint64_t*) &locs;
+    __m256i start_idx_vec = _mm256_set1_epi32(start_idx);
 
-    tok_array->size += size;
+    for (uint8_t i = 0; i < 4 && size > 0; ++i) {
+        __m256i locs_expanded = _mm256_cvtepu8_epi32(
+            _mm_set_epi64x(0, *(locs_64 + i))   // Set lower 64 bits to current locations
+        );
+
+        locs_expanded = _mm256_add_epi32(
+            locs_expanded,
+            start_idx_vec
+        );
+
+        _mm256_storeu_si256(
+            (__m256i *) (tok_array->token_locs + tok_array->size),
+            locs_expanded
+        );
+
+        tok_array->size += 8;   // Assume that we always read 8 bytes. Adjust size later
+        size -= 8;
+    }
+
+    tok_array->size += size;    // Adjust size
 }
 
 void free_token_array(TokenArray tok_list) {

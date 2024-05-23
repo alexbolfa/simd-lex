@@ -92,8 +92,9 @@ void append_token(TokenArray *tok_array, Token token);
  * @param types A left-packed __m256i vector with the tokens types.
  * @param locs A left-packed __m256i vector with the tokens location.
  * @param size Number of tokens to append.
+ * @param start_idx Starting index of current vector of token.
  */
-void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size);
+void append_tokens(TokenArray *tok_array, __m256i types, __m256i locs, int size, uint32_t start_idx);
 
 void free_token_array(TokenArray tok_list);
 

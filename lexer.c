@@ -20,7 +20,7 @@ TokenArray lex(char *input, long input_size) {
         find_token_indices(&tags, &indices, &size);
 
         // Add tokens
-        append_tokens(&tokens, tags, indices, size);
+        append_tokens(&tokens, tags, indices, size, i);
 
         // Swap vectors
         current_vec = next_vec;
@@ -86,7 +86,7 @@ TokenArray lex_file(char *file_path, char **file_content) {
     // Append end-of-file token
     append_token(
         &tokens,
-        create_token(TOK_EOF, 0)
+        create_token(TOK_EOF, file_size)
     );
 
     return tokens;
