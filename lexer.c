@@ -395,10 +395,13 @@ char* read_file(const char *filename, long *file_size, long pad_multiple) {
     // Allocate memory multiple of pad_multiple
     long size = *file_size + 1;
     long padding = (pad_multiple - (size % pad_multiple)) % pad_multiple;
-    char *file_content = (char *) malloc(size + padding + VECTOR_SIZE);
+    size += padding;
 
-    if (!file_content) {
-        fprintf(stderr, "Memory allocation failed.\n");
+    // Allocate aligned memory
+    char *file_content;
+    int result = posix_memalign((void **)&file_content, pad_multiple, size + VECTOR_SIZE);
+    if (result != 0) {
+        fprintf(stderr, "Memory allocation failed: %s.\n", strerror(result));
         fclose(file);
         return NULL;
     }
