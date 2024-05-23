@@ -2,117 +2,165 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 Token create_token(TokenType type, uint32_t loc) {
     return (Token) { type, loc };
 }
 
-char* token_to_string(const Token token) {
+void token_to_string(char *dst, const Token token, const char *src) {
     switch (token.type) {
         // One byte punctuators
         case TOK_L_PAREN:
-            return "l_paren  (";
+            strcpy(dst, "l_paren  (");
+            break;
         case TOK_R_PAREN:
-            return "r_paren  )";
+            strcpy(dst, "r_paren  )");
+            break;
         case TOK_L_SQUARE:
-            return "l_square  [";
+            strcpy(dst, "l_square  [");
+            break;
         case TOK_R_SQUARE:
-            return "r_square  ]";
+            strcpy(dst, "r_square  ]");
+            break;
         case TOK_L_BRACE:
-            return "l_brace  {";
+            strcpy(dst, "l_brace  {");
+            break;
         case TOK_R_BRACE:
-            return "r_brace  }";
+            strcpy(dst, "r_brace  }");
+            break;
         case TOK_COMMA:
-            return "comma  ,";
+            strcpy(dst, "comma  ,");
+            break;
         case TOK_SEMI:
-            return "semi  ;";
+            strcpy(dst, "semi  ;");
+            break;
         case TOK_PLUS:
-            return "plus  +";
+            strcpy(dst, "plus  +");
+            break;
         case TOK_MINUS:
-            return "minus  -";
+            strcpy(dst, "minus  -");
+            break;
         case TOK_TILDE:
-            return "tilde  ~";
+            strcpy(dst, "tilde  ~");
+            break;
         case TOK_PERCENT:
-            return "percent  %";
+            strcpy(dst, "percent  %");
+            break;
         case TOK_LESS:
-            return "less  <";
+            strcpy(dst, "less  <");
+            break;
         case TOK_GREATER:
-            return "greater  >";
+            strcpy(dst, "greater  >");
+            break;
         case TOK_QUESTION:
-            return "question  ?";
+            strcpy(dst, "question  ?");
+            break;
         case TOK_EXCLAIM:
-            return "exclaim  !";
+            strcpy(dst, "exclaim  !");
+            break;
         case TOK_STAR:
-            return "star  *";
+            strcpy(dst, "star  *");
+            break;
         case TOK_CARET:
-            return "caret  ^";
+            strcpy(dst, "caret  ^");
+            break;
         case TOK_AMP:
-            return "amp  &";
+            strcpy(dst, "amp  &");
+            break;
         case TOK_EQUAL:
-            return "equal  =";
+            strcpy(dst, "equal  =");
+            break;
         case TOK_PERIOD:
-            return "period  .";
+            strcpy(dst, "period  .");
+            break;
         case TOK_PIPE:
-            return "pipe  |";
+            strcpy(dst, "pipe  |");
+            break;
         case TOK_SLASH:
-            return "slash  /";
+            strcpy(dst, "slash  /");
+            break;
         case TOK_COLON:
-            return "colon  :";
+            strcpy(dst, "colon  :");
+            break;
 
         // Two byte punctuators
         case TOK_AMP_AMP:
-            return "ampamp  &&";
+            strcpy(dst, "ampamp  &&");
+            break;
         case TOK_GREATER_EQUAL:
-            return "greaterequal  >=";
+            strcpy(dst, "greaterequal  >=");
+            break;
         case TOK_LESS_EQUAL:
-            return "lessequal  <=";
+            strcpy(dst, "lessequal  <=");
+            break;
         case TOK_EQUAL_EQUAL:
-            return "equalequal  ==";
+            strcpy(dst, "equalequal  ==");
+            break;
         case TOK_EXCLAIM_EQUAL:
-            return "exclaimequal  !=";
+            strcpy(dst, "exclaimequal  !=");
+            break;
         case TOK_PIPE_PIPE:
-            return "pipepipe  ||";
+            strcpy(dst, "pipepipe  ||");
+            break;
         case TOK_PLUS_EQUAL:
-            return "plusequal  +=";
+            strcpy(dst, "plusequal  +=");
+            break;
         case TOK_MINUS_EQUAL:
-            return "minusequal  -=";
+            strcpy(dst, "minusequal  -=");
+            break;
         case TOK_STAR_EQUAL:
-            return "starequal  *=";
+            strcpy(dst, "starequal  *=");
+            break;
         case TOK_SLASH_EQUAL:
-            return "slashequal  /=";
+            strcpy(dst, "slashequal  /=");
+            break;
         case TOK_CARET_EQUAL:
-            return "caretequal  ^=";
+            strcpy(dst, "caretequal  ^=");
+            break;
         case TOK_PIPE_EQUAL:
-            return "pipeequal  |=";
+            strcpy(dst, "pipeequal  |=");
+            break;
         case TOK_PERCENT_EQUAL:
-            return "percentequal  %=";
+            strcpy(dst, "percentequal  %=");
+            break;
         case TOK_AMP_EQUAL:
-            return "ampequal  &=";
+            strcpy(dst, "ampequal  &=");
+            break;
         case TOK_PLUS_PLUS:
-            return "plusplus  ++";
+            strcpy(dst, "plusplus  ++");
+            break;
         case TOK_MINUS_MINUS:
-            return "minusminus  --";
+            strcpy(dst, "minusminus  --");
+            break;
         case TOK_GREATER_GREATER:
-            return "greatergreater  >>";
+            strcpy(dst, "greatergreater  >>");
+            break;
         case TOK_LESS_LESS:
-            return "lessless  <<";
+            strcpy(dst, "lessless  <<");
+            break;
         case TOK_ARROW:
-            return "arrow  ->";
+            strcpy(dst, "arrow  ->");
+            break;
 
         // Three byte punctuators
         case TOK_ELLIPSIS:
-            return "ellipsis  ...";
+            strcpy(dst, "ellipsis  ...");
+            break;
         case TOK_LESS_LESS_EQUAL:
-            return "lesslessequal  <<=";
+            strcpy(dst, "lesslessequal  <<=");
+            break;
         case TOK_GREATER_GREATER_EQUAL:
-            return "greatergreaterequal  >>=";
+            strcpy(dst, "greatergreaterequal  >>=");
+            break;
 
         case TOK_EOF:
-            return "eof  ";
+            strcpy(dst, "eof  ");
+            break;
 
         default:
             fprintf(stderr, "Invalid token type.\n");
-        return "";
+            strcpy(dst, "");
     }
 }
 
@@ -120,7 +168,12 @@ void print_tokens(const TokenArray tok_array) {
     for (int i = 0; i < tok_array.size; ++i) {
         Token token = create_token(tok_array.token_types[i], tok_array.token_locs[i]);
 
-        printf("<loc:%d> %s\n", token.loc, token_to_string(token));
+        char *str = malloc(100);
+        token_to_string(str, token, tok_array.src);
+
+        printf("<loc:%d> %s\n", token.loc, str);
+
+        free(str);
     }
 }
 
@@ -140,6 +193,7 @@ TokenArray create_empty_token_array(uint64_t capacity) {
     tok_array.token_types = tokens_types;
     tok_array.token_locs = token_locs;
     tok_array.capacity = capacity;
+    tok_array.src = NULL;
     tok_array.size = 0;
 
     return tok_array;

@@ -61,7 +61,7 @@ typedef enum : uint8_t {
     TOK_LESS_LESS_EQUAL = 181,          // <<=
     TOK_GREATER_GREATER_EQUAL = 185,    // >>=
 
-    TOK_EOF = 0,         // End-of-file
+    TOK_EOF = 0,        // End-of-file
 } TokenType;
 
 typedef struct Token Token;
@@ -75,11 +75,12 @@ struct TokenArray {
     uint64_t size;
     uint64_t capacity;
     uint32_t* token_locs;
+    char* src;
     TokenType* token_types;
 };
 
 Token create_token(TokenType type, uint32_t loc);
-char* token_to_string(const Token token);
+void token_to_string(char *dst, const Token token, const char *src);
 void print_tokens(const TokenArray tok_array);
 
 TokenArray create_empty_token_array(uint64_t capacity);
