@@ -125,10 +125,14 @@ void print_tokens(const TokenArray tok_array) {
 }
 
 TokenArray create_empty_token_array(uint64_t capacity) {
-    TokenType* tokens_types = (TokenType*) malloc(capacity * sizeof(TokenType));
-    uint32_t* token_locs = (uint32_t*) malloc(capacity * sizeof(uint32_t));
+    TokenType *tokens_types;
+    uint32_t *token_locs;
+    const size_t alignment = VECTOR_SIZE;
 
-    if (tokens_types == NULL || token_locs == NULL) {
+    int result = posix_memalign((void**)&tokens_types, alignment, capacity * sizeof(TokenType));
+    result |= posix_memalign((void**)&token_locs, alignment, capacity * sizeof(uint32_t));
+
+    if (result) {
         fprintf(stderr, "Memory allocation failure.\n");
     }
 
