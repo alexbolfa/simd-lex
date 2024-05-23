@@ -14,6 +14,15 @@
 TokenArray lex(char *input, long input_size);
 
 /**
+ * Change characters in a given vector to \0 as indicated by mask.
+ *
+ * @param dst A pointer to the string to be modified.
+ * @param input A __m256i vector to be modified.
+ * @param mask A __m256i mask to the characters to be modified.
+ */
+void mark_token_ends(char *dst, __m256i input, __m256i mask);
+
+/**
  * Parallel Bits Extract (PEXT) on 256 bit vectors.
  *
  * @param vector A __m256i vector from which it extracts.
@@ -42,7 +51,7 @@ __m256i non_zero_mask(const __m256i vector);
  */
 void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
-__m256i run_sublexers(__m256i current_vec, __m256i *next_vec);
+__m256i run_sublexers(__m256i current_vec, __m256i *next_vec, uint64_t *token_ends);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
@@ -54,9 +63,10 @@ __m256i mm256_cmpistrm_any(__m128i match, __m256i vector);
  *
  * @param vector A __m256i vector to tokenize.
  * @param tags A __m256i holding token tags.
+ * @param token_ends A bit mask of token endings.
  * @return
  */
-void one_byte_punct_sub_lex(__m256i vector, __m256i *tags);
+void one_byte_punct_sub_lex(__m256i vector, __m256i *tags, uint64_t *token_ends);
 
 /**
  * Shift current vector by one to the left, adding the first element
@@ -104,9 +114,10 @@ void remove_prefix_64(__m256i *vector, uint64_t prefix);
  * @param current_vec A __m256i vector to tokenize.
  * @param next_vec A __m256i vector to the next batch of characters.
  * @param tags A __m256i holding token tags.
+ * @param token_ends A bit mask of token endings.
  * @return
  */
-void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags);
+void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tags, uint64_t *token_ends);
 
 /**
  * Lexes three byte punctuators and overlays special code to a
@@ -115,9 +126,10 @@ void two_byte_punct_sub_lex(__m256i current_vec, __m256i *next_vec, __m256i *tag
  * @param current_vec A __m256i vector to tokenize.
  * @param next_vec A __m256i vector to the next batch of characters.
  * @param tags A __m256i holding token tags.
+ * @param token_ends A bit mask of token endings.
  * @return
  */
-void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags);
+void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags, uint64_t *token_ends);
 
 __m256i load_vector(const char* pos);
 
