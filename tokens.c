@@ -154,6 +154,11 @@ void token_to_string(char *dst, const Token token, const char *src) {
             strcpy(dst, "greatergreaterequal  >>=");
             break;
 
+        case TOK_IDENT:
+            strcpy(dst, "identifier  ");
+            strcat(dst, (src + token.loc));
+            break;
+
         case TOK_EOF:
             strcpy(dst, "eof  ");
             break;

@@ -1,6 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include <stdbool.h>
+
 #include "tokens.h"
 
 /**
@@ -44,7 +46,7 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
 void replace_white_space(__m256i* vector);
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec);
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, bool last_empty);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
@@ -120,6 +122,10 @@ void two_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *ta
  * @return
  */
 void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags);
+
+__m256i alpha_mask(__m256i vector);
+
+void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty);
 
 __m256i load_vector(const char* pos);
 

@@ -1,4 +1,5 @@
 #include "lexer.h"
+
 #include "print_utils.c"
 
 #include <stdio.h>
@@ -6,13 +7,15 @@
 
 TokenArray lex(char *input, long input_size) {
     TokenArray tokens = create_empty_token_array(input_size + 4);
+    tokens.src = input;
 
+    bool last_empty = true;
     __m256i current_vec = load_vector(input);
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
         __m256i next_vec = load_vector(input + i + VECTOR_SIZE);
-        __m256i tags = run_sublexers(&current_vec, &next_vec);
+        __m256i tags = run_sublexers(&current_vec, &next_vec, last_empty);
 
         // Traverse tags
         int size;
@@ -21,7 +24,8 @@ TokenArray lex(char *input, long input_size) {
 
         // Handle results
         append_tokens(&tokens, tags, indices, size, i);
-        _mm256_storeu_si256((__m256i *)input, current_vec);
+        _mm256_storeu_si256((__m256i *)(input + i), current_vec);
+        last_empty = input[i + 31] == 0;
 
         // Swap vectors
         current_vec = next_vec;
@@ -88,7 +92,7 @@ void replace_white_space(__m256i* vector) {
     );
 }
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec) {
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, bool last_empty) {
     __m256i tags = _mm256_setzero_si256();
 
     // Lex punctuators
@@ -97,6 +101,8 @@ __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec) {
     one_byte_punct_sub_lex(current_vec, &tags);
 
     replace_white_space(current_vec);
+
+    identifiers_sub_lex(*current_vec, &tags, last_empty);
 
     return tags;
 }
@@ -401,6 +407,57 @@ void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *
                         + ((mask & (1 << 30)) >> 30) * 0xFF;    // Remove first byte of next_vec
 
     remove_prefix_64(next_vec, carry);
+}
+
+__m256i alpha_mask(__m256i vector) {
+    const __m256i A = _mm256_set1_epi8('A' - 1);
+    const __m256i Z = _mm256_set1_epi8('Z' + 1);
+    const __m256i a = _mm256_set1_epi8('a' - 1);
+    const __m256i z = _mm256_set1_epi8('z' + 1);
+
+    const __m256i is_upper = _mm256_and_si256(
+        _mm256_cmpgt_epi8(vector, A),
+        _mm256_cmpgt_epi8(Z, vector)
+    );
+
+    const __m256i is_lower = _mm256_and_si256(
+        _mm256_cmpgt_epi8(vector, a),
+        _mm256_cmpgt_epi8(z, vector)
+    );
+
+    return _mm256_or_si256(is_upper, is_lower);
+}
+
+void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty) {
+    __m256i is_alpha = alpha_mask(current_vec);
+    __m256i is_underscore = _mm256_cmpeq_epi8(
+        current_vec,
+        _mm256_set1_epi8('_')
+    );
+
+    __m256i ident_start_mask = _mm256_or_si256(
+        is_alpha,
+        is_underscore
+    );
+
+    uint32_t has_whitespace_before = _mm256_movemask_epi8(
+        _mm256_cmpeq_epi8(
+            current_vec,
+            _mm256_setzero_si256()
+        )
+    );
+    has_whitespace_before = (has_whitespace_before << 1) | last_empty;
+
+    ident_start_mask = _mm256_and_si256(
+        ident_start_mask,
+        get_mask(has_whitespace_before)
+    );
+
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_set1_epi8(1),
+        ident_start_mask
+    );
 }
 
 __m256i load_vector(const char* pos) {

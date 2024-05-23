@@ -61,13 +61,15 @@ typedef enum : uint8_t {
     TOK_LESS_LESS_EQUAL = 181,          // <<=
     TOK_GREATER_GREATER_EQUAL = 185,    // >>=
 
+    TOK_IDENT = 1,      // Identifiers
+
     TOK_EOF = 0,        // End-of-file
 } TokenType;
 
 typedef struct Token Token;
 struct Token {
     TokenType type;     // Token type (identifier, number ...etc)
-    uint32_t loc;          // Token location in file
+    uint32_t loc;       // Token location in file
 };
 
 typedef struct TokenArray TokenArray;
