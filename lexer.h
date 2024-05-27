@@ -46,21 +46,25 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
 void replace_white_space(__m256i* vector);
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, bool last_empty);
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, char last_char);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
 __m256i mm256_cmpistrm_any(__m128i match, __m256i vector);
+
+__m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_char);
 
 /**
  * Lexes single byte punctuators and overlays their ASCII code to a
  *  given vector of tags, marking start of tokens.
  *
  * @param current_vec A __m256i vector to tokenize.
+ * @param next_vec
  * @param tags A __m256i holding token tags.
+ * @param last_char
  * @return
  */
-void one_byte_punct_sub_lex(__m256i *current_vec, __m256i *tags);
+void one_byte_punct_sub_lex(__m256i *current_vec, __m256i next_vec, __m256i *tags, char last_char);
 
 /**
  * Shift current vector by one to the left, adding the first element
@@ -126,6 +130,10 @@ void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *
 __m256i alpha_mask(__m256i vector);
 
 void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty);
+
+__m256i num_mask(__m256i vector);
+
+void numeric_const_sub_lex(const __m256i current_vec, __m256i *tags, const bool last_empty);
 
 __m256i load_vector(const char* pos);
 

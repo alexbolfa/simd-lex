@@ -158,6 +158,10 @@ void token_to_string(char *dst, const Token token, const char *src) {
             strcpy(dst, "identifier  ");
             strcat(dst, (src + token.loc));
             break;
+        case TOK_NUM:
+            strcpy(dst, "numeric_constant  ");
+            strcat(dst, (src + token.loc));
+            break;
 
         case TOK_EOF:
             strcpy(dst, "eof  ");

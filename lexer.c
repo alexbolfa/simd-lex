@@ -9,13 +9,13 @@ TokenArray lex(char *input, long input_size) {
     TokenArray tokens = create_empty_token_array(input_size + 4);
     tokens.src = input;
 
-    bool last_empty = true;
+    char last_char = 0;
     __m256i current_vec = load_vector(input);
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
         __m256i next_vec = load_vector(input + i + VECTOR_SIZE);
-        __m256i tags = run_sublexers(&current_vec, &next_vec, last_empty);
+        __m256i tags = run_sublexers(&current_vec, &next_vec, last_char);
 
         // Traverse tags
         int size;
@@ -25,7 +25,7 @@ TokenArray lex(char *input, long input_size) {
         // Handle results
         append_tokens(&tokens, tags, indices, size, i);
         _mm256_storeu_si256((__m256i *)(input + i), current_vec);
-        last_empty = input[i + 31] == 0;
+        last_char = input[i + 31];
 
         // Swap vectors
         current_vec = next_vec;
@@ -92,17 +92,17 @@ void replace_white_space(__m256i* vector) {
     );
 }
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, bool last_empty) {
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, char last_char) {
     __m256i tags = _mm256_setzero_si256();
 
-    // Lex punctuators
     three_byte_punct_sub_lex(current_vec, next_vec, &tags);
     two_byte_punct_sub_lex(current_vec, next_vec, &tags);
-    one_byte_punct_sub_lex(current_vec, &tags);
+    one_byte_punct_sub_lex(current_vec, *next_vec, &tags, last_char);
 
     replace_white_space(current_vec);
 
-    identifiers_sub_lex(*current_vec, &tags, last_empty);
+    identifiers_sub_lex(*current_vec, &tags, last_char == 0);
+    numeric_const_sub_lex(*current_vec, &tags, last_char == 0);
 
     return tags;
 }
@@ -136,7 +136,21 @@ __m256i mm256_cmpistrm_any(__m128i match, __m256i vector) {
     );
 }
 
-void one_byte_punct_sub_lex(__m256i *current_vec, __m256i *tags) {
+__m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_char) {
+    uint64_t is_period = _mm256_movemask_epi8(
+        _mm256_cmpeq_epi8(
+            current_vec,
+            _mm256_set1_epi8('.')
+        )
+    );
+    uint64_t has_num_after = _mm256_movemask_epi8(num_mask(look_ahead_one(current_vec, next_vec)));
+    uint64_t has_num_before = _mm256_movemask_epi8(num_mask(current_vec));
+    has_num_before = (has_num_before << 1) | (last_char >= 0 && last_char <= 9);
+
+    return get_mask(is_period & (has_num_before | has_num_after));
+}
+
+void one_byte_punct_sub_lex(__m256i *current_vec, __m256i next_vec, __m256i *tags, char last_char) {
     // Punctuators with ASCII in range [40, 47] i.e. ()*+,-./
     __m256i mask = range_mask(*current_vec, 40, 47);
 
@@ -148,6 +162,12 @@ void one_byte_punct_sub_lex(__m256i *current_vec, __m256i *tags) {
     mask = _mm256_or_si256(
         mask,
         mm256_cmpistrm_any(match, *current_vec)
+    );
+
+    // Ignore periods part of numeric constants
+    mask = _mm256_xor_si256(
+        mask,
+        numeric_periods_mask(*current_vec, next_vec, last_char)
     );
 
     // Overlay found one-byte punctators over tags
@@ -455,8 +475,58 @@ void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty) {
 
     *tags = _mm256_blendv_epi8(
         *tags,
-        _mm256_set1_epi8(1),
+        _mm256_set1_epi8(TOK_IDENT),
         ident_start_mask
+    );
+}
+
+__m256i num_mask(__m256i vector) {
+    const __m256i zero = _mm256_set1_epi8('0' - 1);
+    const __m256i nine = _mm256_set1_epi8('9' + 1);
+
+    __m256i is_ge_zero = _mm256_cmpgt_epi8(vector, zero);
+    __m256i is_le_nine = _mm256_cmpgt_epi8(nine, vector);
+
+    return _mm256_and_si256(is_ge_zero, is_le_nine);
+}
+
+void numeric_const_sub_lex(
+    const __m256i current_vec,
+    __m256i *tags,
+    const bool last_empty
+) {
+    __m256i num_start_mask = num_mask(current_vec);
+
+    uint32_t has_whitespace_before = _mm256_movemask_epi8(
+        _mm256_cmpeq_epi8(
+            current_vec,
+            _mm256_setzero_si256()
+        )
+    );
+    has_whitespace_before = (has_whitespace_before << 1) | last_empty;
+
+    __m256i is_num_period = _mm256_cmpeq_epi8(
+        current_vec,    // All periods in current_vec are for numbers
+        _mm256_set1_epi8('.')
+    );
+
+    num_start_mask = _mm256_and_si256(
+        num_start_mask,
+        get_mask(has_whitespace_before)
+    );
+
+    num_start_mask = _mm256_or_si256(
+        num_start_mask,
+        _mm256_and_si256(
+            is_num_period,
+            get_mask(has_whitespace_before)
+        )
+    );
+
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_set1_epi8(TOK_NUM),
+        num_start_mask
     );
 }
 

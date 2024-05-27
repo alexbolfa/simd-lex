@@ -62,6 +62,7 @@ typedef enum : uint8_t {
     TOK_GREATER_GREATER_EQUAL = 185,    // >>=
 
     TOK_IDENT = 1,      // Identifiers
+    TOK_NUM = 2,        // Numeric constants
 
     TOK_EOF = 0,        // End-of-file
 } TokenType;
