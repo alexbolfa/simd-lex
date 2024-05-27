@@ -19,32 +19,44 @@ bool parse_flags(int argc, char **argv, bool *time_flag) {
     return true;
 }
 
-void print_results(TokenArray tokens, bool time_flag, clock_t start) {
+void print_results(TokenArray tokens, bool time_flag, double avg_time) {
     if (time_flag) {
-        clock_t end = clock();
-        double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
-        printf("Time taken: %f ms\n", cpu_time_used);
+        printf("Avg. time: %f ms\n", avg_time);
     } else {
         print_tokens(tokens);
     };
 }
 
 int main(int argc, char **argv) {
+    const int repeat_bench = 10;
+    double avg_time = 0;
     bool time_flag;
 
     if (!parse_flags(argc, argv, &time_flag)) {
         return -1;
     }
 
-    // Start timer
-    clock_t start = clock();
-
-    // Run lexer
     char *file_content;
-    TokenArray tokens = lex_file(argv[1], &file_content);
+    TokenArray tokens;
+
+    int cnt = repeat_bench;
+    do {
+        // Start timer
+        clock_t start = clock();
+
+        // Run lexer
+        tokens = lex_file(argv[1], &file_content);
+
+        // Stop timer
+        clock_t end = clock();
+        double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
+        avg_time += cpu_time_used;
+
+        --cnt;
+    } while (time_flag && cnt);
 
     // Results
-    print_results(tokens, time_flag, start);
+    print_results(tokens, time_flag, avg_time / repeat_bench);
 
     // Clean up
     free(file_content);
