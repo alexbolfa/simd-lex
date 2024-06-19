@@ -171,6 +171,22 @@ void replace_white_space(__m256i* vector) {
         )
     );
 
+    white_spaces_mask = _mm256_or_si256(
+        white_spaces_mask,
+        _mm256_cmpeq_epi8(
+            *vector,
+            _mm256_set1_epi8('\t')
+        )
+    );
+
+    white_spaces_mask = _mm256_or_si256(
+        white_spaces_mask,
+        _mm256_cmpeq_epi8(
+            *vector,
+            _mm256_set1_epi8('\r')
+        )
+    );
+
     *vector = _mm256_blendv_epi8(
         *vector,
         _mm256_setzero_si256(),
