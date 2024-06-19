@@ -52,7 +52,8 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
 void replace_white_space(__m256i* vector);
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, char last_char);
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
+                      escaped_continue);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
@@ -129,6 +130,7 @@ void two_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *ta
  * @param current_vec A __m256i vector to tokenize.
  * @param next_vec A __m256i vector to the next batch of characters.
  * @param tags A __m256i holding token tags.
+ * @param
  * @return
  */
 void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *tags);
@@ -140,6 +142,9 @@ void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty);
 __m256i num_mask(__m256i vector);
 
 void numeric_const_sub_lex(const __m256i current_vec, __m256i *tags, const bool last_empty);
+
+void text_lit_sub_lex(__m256i *current_vec, __m256i *tags, const char delim, bool *does_continue, const TokenType type, const
+                      __m256i src_current_vec, bool *escaped_continue);
 
 __m256i load_vector(const char* pos);
 

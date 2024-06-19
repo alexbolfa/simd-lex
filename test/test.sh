@@ -13,11 +13,13 @@ make
 # Execute the built program and capture its output
 ./simd_lexer "$SOURCE_FILE" \
     | awk -F " " '{print $2, "",$3}' \
+    | sed "s/'//g" \
     > simd_lexer_output.txt
 
 # Execute the clang command and capture its output
 clang -fsyntax-only -Xclang -dump-tokens "$SOURCE_FILE" 2>&1 \
     | awk -F "'" '{print $1, $2}' \
+    | sed "s/'//g" \
     > clang_output.txt
 
 echo Running on "$SOURCE_FILE":

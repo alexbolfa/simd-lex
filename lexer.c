@@ -10,12 +10,19 @@ TokenArray lex(char *input, long input_size) {
     tokens.src = input;
 
     char last_char = 0;
+    bool ch_continue = 0;
+    bool escaped_continue = 0;
     __m256i current_vec = load_vector(input);
+    __m256i src_current_vec = load_vector(input);
 
     for (int i = 0; i < input_size; i += VECTOR_SIZE) {
         // Run sub lexers
         __m256i next_vec = load_vector(input + i + VECTOR_SIZE);
-        __m256i tags = run_sublexers(&current_vec, &next_vec, last_char);
+        const __m256i src_next_vec = load_vector(input + i + VECTOR_SIZE);
+
+        __m256i tags = run_sublexers(
+            &current_vec, &next_vec,
+            src_current_vec, last_char, &ch_continue, &escaped_continue);
 
         // Traverse tags
         int size;
@@ -29,6 +36,7 @@ TokenArray lex(char *input, long input_size) {
 
         // Swap vectors
         current_vec = next_vec;
+        src_current_vec = src_next_vec;
     }
 
     short lookup[256] = {0};
@@ -194,7 +202,8 @@ void replace_white_space(__m256i* vector) {
     );
 }
 
-__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, char last_char) {
+__m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
+                      escaped_continue) {
     __m256i tags = _mm256_setzero_si256();
 
     three_byte_punct_sub_lex(current_vec, next_vec, &tags);
@@ -205,6 +214,10 @@ __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, char last_char) {
 
     identifiers_sub_lex(*current_vec, &tags, last_char == 0);
     numeric_const_sub_lex(*current_vec, &tags, last_char == 0);
+
+    text_lit_sub_lex(current_vec, &tags, '\'',
+                     ch_continue, TOK_CHAR_LIT,
+                     src_current_vec, escaped_continue);
 
     return tags;
 }
@@ -629,6 +642,74 @@ void numeric_const_sub_lex(
         *tags,
         _mm256_set1_epi8(TOK_NUM),
         num_start_mask
+    );
+}
+
+// TODO: remember if backslashes continue (if so remove or add)
+void text_lit_sub_lex(
+    __m256i *current_vec,
+    __m256i *tags,
+    const char delim,
+    bool *does_continue,
+    const TokenType type,
+    const __m256i src_current_vec,
+    bool *escaped_continue
+) {
+    uint32_t is_delim = _mm256_movemask_epi8(  // Delimiter
+        _mm256_cmpeq_epi8(
+            *current_vec,
+            _mm256_set1_epi8(delim)
+        )
+    );
+
+    uint32_t B = _mm256_movemask_epi8(  // Backslash
+        _mm256_cmpeq_epi8(
+            *current_vec,
+            _mm256_set1_epi8('\\')
+        )
+    );
+
+    const uint32_t O = 0xAAAAAAAA;  // 10101010101010101010101010101010 in binary
+    const uint32_t E = 0x55555555;  // 01010101010101010101010101010101 in binary
+
+    B = (B ^ (*escaped_continue)) & B;  // Remove escaped backslash
+
+    uint64_t escaped_ch = (((B + (B & ~(B << 1)& E))& ~B)& ~E) | (((B+ ((B & ~(B << 1))& O))&  ~B)& E);
+
+    escaped_ch ^= *escaped_continue;  // Add first character which might be escaped
+    is_delim ^= (escaped_ch & is_delim);
+
+    uint32_t region = _mm_cvtsi128_si32(    // Literal region
+        _mm_clmulepi64_si128(
+            _mm_set_epi32(0, 0, 0, is_delim ^ (*does_continue)),
+            _mm_set1_epi8(-1),
+            0
+        )
+    );
+
+    // Remove tags inside literal
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_setzero_si256(),
+        get_mask(region)
+    );
+
+    *does_continue = (region >> 31) & 1;
+    *escaped_continue = ((B >> 31) & 1) & (!((escaped_ch >> 31) & 1));
+
+    // Add token literals
+    is_delim &= region; // Keep only starting delimiters
+
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_set1_epi8(type),
+        get_mask(is_delim)
+    );
+
+    *current_vec = _mm256_blendv_epi8(
+        *current_vec,
+        src_current_vec,
+        get_mask(region)
     );
 }
 

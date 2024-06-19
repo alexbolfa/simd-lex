@@ -288,6 +288,10 @@ void token_to_string(char *dst, const Token token, const char *src) {
             strcpy(dst, "_Thread_local  _Thread_local");
             break;
 
+        case TOK_CHAR_LIT:
+            strcpy(dst, "char_constant  ");
+            strcat(dst, (src + token.loc));
+            break;
         case TOK_IDENT:
             strcpy(dst, "identifier  ");
             strcat(dst, (src + token.loc));

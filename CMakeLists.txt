@@ -8,6 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx2")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse4.2")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mbmi2")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mpclmul")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 
 add_executable(simd_lexer main.c

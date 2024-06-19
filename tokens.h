@@ -107,6 +107,8 @@ typedef enum : uint8_t {
     TOK__STATIC_ASSERT = 56,    // _Static_assert
     TOK__THREAD_LOCAL = 57,     // _Thread_local
 
+    TOK_CHAR_LIT = 202, // Char literal
+
     TOK_IDENT = 1,      // Identifiers
     TOK_NUM = 2,        // Numeric constants
 
