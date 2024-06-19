@@ -15,6 +15,12 @@
  */
 TokenArray lex(char *input, long input_size);
 
+uint8_t hash(uint64_t val);
+
+void populate_keyword_lookup_table(short *lookup);
+
+void find_keywords(TokenArray *tok_array, short *lookup);
+
 /**
  * Parallel Bits Extract (PEXT) on 256 bit vectors.
  *

@@ -154,6 +154,140 @@ void token_to_string(char *dst, const Token token, const char *src) {
             strcpy(dst, "greatergreaterequal  >>=");
             break;
 
+        // Keywords
+        case TOK_AUTO:
+            strcpy(dst, "auto  auto");
+            break;
+        case TOK_BREAK:
+            strcpy(dst, "break  break");
+            break;
+        case TOK_CASE:
+            strcpy(dst, "case  case");
+            break;
+        case TOK_CHAR:
+            strcpy(dst, "char  char");
+            break;
+        case TOK_CONST:
+            strcpy(dst, "const  const");
+            break;
+        case TOK_CONTINUE:
+            strcpy(dst, "continue  continue");
+            break;
+        case TOK_DEFAULT:
+            strcpy(dst, "default  default");
+            break;
+        case TOK_DO:
+            strcpy(dst, "do  do");
+            break;
+        case TOK_DOUBLE:
+            strcpy(dst, "double  double");
+            break;
+        case TOK_ELSE:
+            strcpy(dst, "else  else");
+            break;
+        case TOK_ENUM:
+            strcpy(dst, "enum  enum");
+            break;
+        case TOK_EXTERN:
+            strcpy(dst, "extern  extern");
+            break;
+        case TOK_FLOAT:
+            strcpy(dst, "float  float");
+            break;
+        case TOK_FOR:
+            strcpy(dst, "for  for");
+            break;
+        case TOK_GOTO:
+            strcpy(dst, "goto  goto");
+            break;
+        case TOK_IF:
+            strcpy(dst, "if  if");
+            break;
+        case TOK_INLINE:
+            strcpy(dst, "inline  inline");
+            break;
+        case TOK_INT:
+            strcpy(dst, "int  int");
+            break;
+        case TOK_LONG:
+            strcpy(dst, "long  long");
+            break;
+        case TOK_REGISTER:
+            strcpy(dst, "register  register");
+            break;
+        case TOK_RESTRICT:
+            strcpy(dst, "restrict  restrict");
+            break;
+        case TOK_RETURN:
+            strcpy(dst, "return  return");
+            break;
+        case TOK_SHORT:
+            strcpy(dst, "short  short");
+            break;
+        case TOK_SIGNED:
+            strcpy(dst, "signed  signed");
+            break;
+        case TOK_SIZEOF:
+            strcpy(dst, "sizeof  sizeof");
+            break;
+        case TOK_STATIC:
+            strcpy(dst, "static  static");
+            break;
+        case TOK_STRUCT:
+            strcpy(dst, "struct  struct");
+            break;
+        case TOK_SWITCH:
+            strcpy(dst, "switch  switch");
+            break;
+        case TOK_TYPEDEF:
+            strcpy(dst, "typedef  typedef");
+            break;
+        case TOK_UNION:
+            strcpy(dst, "union  union");
+            break;
+        case TOK_UNSIGNED:
+            strcpy(dst, "unsigned  unsigned");
+            break;
+        case TOK_VOID:
+            strcpy(dst, "void  void");
+            break;
+        case TOK_VOLATILE:
+            strcpy(dst, "volatile  volatile");
+            break;
+        case TOK_WHILE:
+            strcpy(dst, "while  while");
+            break;
+        case TOK__ALIGNAS:
+            strcpy(dst, "_Alignas  _Alignas");
+            break;
+        case TOK__ALIGNOF:
+            strcpy(dst, "_Alignof  _Alignof");
+            break;
+        case TOK__ATOMIC:
+            strcpy(dst, "_Atomic  _Atomic");
+            break;
+        case TOK__BOOL:
+            strcpy(dst, "_Bool  _Bool");
+            break;
+        case TOK__COMPLEX:
+            strcpy(dst, "_Complex  _Complex");
+            break;
+        case TOK__GENERIC:
+            strcpy(dst, "_Generic  _Generic");
+            break;
+        case TOK__IMAGINARY:
+            strcpy(dst, "_Imaginary  _Imaginary");
+            break;
+        case TOK__NORETURN:
+            strcpy(dst, "_Noreturn  _Noreturn");
+            break;
+        case TOK__STATIC_ASSERT:
+            strcpy(dst, "_Static_assert  _Static_assert");
+            break;
+        case TOK__THREAD_LOCAL:
+            strcpy(dst, "_Thread_local  _Thread_local");
+            break;
+
         case TOK_IDENT:
             strcpy(dst, "identifier  ");
             strcat(dst, (src + token.loc));

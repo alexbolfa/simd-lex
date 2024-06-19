@@ -31,7 +31,93 @@ TokenArray lex(char *input, long input_size) {
         current_vec = next_vec;
     }
 
+    short lookup[256] = {0};
+    populate_keyword_lookup_table(lookup);
+    find_keywords(&tokens, lookup);
+
     return tokens;
+}
+
+uint8_t hash(uint64_t val) {
+    return ((((val >> 32) ^ val) & 0xffffffff) * (uint64_t)3523216747) >> 32;
+}
+
+void populate_keyword_lookup_table(short *lookup) {
+    const char *keywords[] = {
+        "", "auto", "break", "case", "char", "const", "continue", "default", "do",
+        "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline",
+        "int", "long", "register", "restrict", "return", "short", "signed", "sizeof",
+        "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile",
+        "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic",
+        "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local"
+    };
+
+    int num_keywords = (sizeof(keywords) / sizeof(keywords[0]));
+    for (int i = 1; i < num_keywords; ++i) {
+        char keyword_copy[9] = {0};
+        strncpy(keyword_copy, keywords[i], 8);
+
+        uint64_t val = *((uint64_t*) keyword_copy);
+        uint8_t hash_val = hash(val);
+
+        lookup[hash_val] = i;
+    }
+}
+
+void find_keywords(TokenArray *tok_array, short *lookup) {
+    const char *keywords[] = {
+        "", "auto", "break", "case", "char", "const", "continue", "default", "do",
+        "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline",
+        "int", "long", "register", "restrict", "return", "short", "signed", "sizeof",
+        "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile",
+        "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic",
+        "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local"
+    };
+
+    const TokenType keyword_types[] = {0, TOK_AUTO, TOK_BREAK, TOK_CASE, TOK_CHAR,
+        TOK_CONST, TOK_CONTINUE, TOK_DEFAULT, TOK_DO, TOK_DOUBLE, TOK_ELSE,
+        TOK_ENUM, TOK_EXTERN, TOK_FLOAT, TOK_FOR, TOK_GOTO, TOK_IF, TOK_INLINE,
+        TOK_INT, TOK_LONG, TOK_REGISTER, TOK_RESTRICT, TOK_RETURN, TOK_SHORT,
+        TOK_SIGNED, TOK_SIZEOF, TOK_STATIC, TOK_STRUCT, TOK_SWITCH, TOK_TYPEDEF,
+        TOK_UNION, TOK_UNSIGNED, TOK_VOID, TOK_VOLATILE, TOK_WHILE, TOK__ALIGNAS,
+        TOK__ALIGNOF, TOK__ATOMIC, TOK__BOOL, TOK__COMPLEX, TOK__GENERIC,
+        TOK__IMAGINARY, TOK__NORETURN, TOK__STATIC_ASSERT, TOK__THREAD_LOCAL};
+
+    for (int i = 0; i < tok_array->size; i += VECTOR_SIZE) {
+        const __m256i current_vec = load_vector((const char *) tok_array->token_types + i);
+        const __m256i mask = _mm256_cmpeq_epi8(
+            current_vec,
+            _mm256_set1_epi8(TOK_IDENT)
+        );
+
+        int size;
+        uint8_t token_indices[] __attribute__((aligned(32))) = {
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31
+        };
+        mm256_pext((__m256i *) token_indices, mask, &size);
+
+        for (int j = 0; j < size; ++j) {
+            int pos = i + token_indices[j];
+            char str[9] = {0};
+            strncpy(str, tok_array->src + tok_array->token_locs[pos], 8);
+
+            const uint64_t val = *((uint64_t*) str);
+            const uint8_t hash_val = hash(val);
+            const uint8_t keyword_pos = lookup[hash_val];
+
+            bool are_equal = strcmp(
+                    tok_array->src + tok_array->token_locs[pos],
+                    keywords[keyword_pos]
+                ) == 0;
+            TokenType keyword_type = keyword_types[keyword_pos];
+
+            // are_equal ? keyword_id : TOK_IDENT
+            tok_array->token_types[pos] = TOK_IDENT ^ ((keyword_type ^ TOK_IDENT) & -!!are_equal);;
+        }
+    }
 }
 
 void mm256_pext(__m256i *vector, __m256i mask, int *size) {

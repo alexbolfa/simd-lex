@@ -61,6 +61,52 @@ typedef enum : uint8_t {
     TOK_LESS_LESS_EQUAL = 181,          // <<=
     TOK_GREATER_GREATER_EQUAL = 185,    // >>=
 
+    // Keywords
+    TOK_AUTO = 3,               // auto
+    TOK_BREAK = 4,              // break
+    TOK_CASE = 5,               // case
+    TOK_CHAR = 6,               // char
+    TOK_CONST = 7,              // const
+    TOK_CONTINUE = 8,           // continue
+    TOK_DEFAULT = 9,            // default
+    TOK_DO = 10,                // do
+    TOK_DOUBLE = 11,            // double
+    TOK_ELSE = 12,              // else
+    TOK_ENUM = 13,              // enum
+    TOK_EXTERN = 14,            // extern
+    TOK_FLOAT = 15,             // float
+    TOK_FOR = 16,               // for
+    TOK_GOTO = 17,              // goto
+    TOK_IF = 18,                // if
+    TOK_INLINE = 19,            // inline
+    TOK_INT = 20,               // int
+    TOK_LONG = 21,              // long
+    TOK_REGISTER = 22,          // register
+    TOK_RESTRICT = 23,          // restrict
+    TOK_RETURN = 24,            // return
+    TOK_SHORT = 25,             // short
+    TOK_SIGNED = 26,            // signed
+    TOK_SIZEOF = 27,            // sizeof
+    TOK_STATIC = 28,            // static
+    TOK_STRUCT = 29,            // struct
+    TOK_SWITCH = 30,            // switch
+    TOK_TYPEDEF = 31,           // typedef
+    TOK_UNION = 32,             // union
+    TOK_UNSIGNED = 34,          // unsigned
+    TOK_VOID = 35,              // void
+    TOK_VOLATILE = 36,          // volatile
+    TOK_WHILE = 39,             // while
+    TOK__ALIGNAS = 48,          // _Alignas
+    TOK__ALIGNOF = 49,          // _Alignof
+    TOK__ATOMIC = 50,           // _Atomic
+    TOK__BOOL = 51,             // _Bool
+    TOK__COMPLEX = 52,          // _Complex
+    TOK__GENERIC = 53,          // _Generic
+    TOK__IMAGINARY = 54,        // _Imaginary
+    TOK__NORETURN = 55,         // _Noreturn
+    TOK__STATIC_ASSERT = 56,    // _Static_assert
+    TOK__THREAD_LOCAL = 57,     // _Thread_local
+
     TOK_IDENT = 1,      // Identifiers
     TOK_NUM = 2,        // Numeric constants
 
