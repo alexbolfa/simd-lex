@@ -54,8 +54,10 @@ void replace_white_space(__m256i* vector);
 
 void replace_token_body(__m256i *vector);
 
+bool is_empty(__m256i vector);
+
 __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
-                      escaped_continue, bool *str_continue);
+                      escaped_continue, bool *str_continue, bool *ln_comm_continue);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
@@ -147,6 +149,8 @@ void numeric_const_sub_lex(const __m256i current_vec, __m256i *tags, const bool 
 
 void text_lit_sub_lex(__m256i *current_vec, __m256i *tags, const char delim, bool *does_continue, const TokenType type, const
                       __m256i src_current_vec, bool *escaped_continue);
+
+void line_comments_sub_lex(__m256i *current_vec, __m256i next_vec, bool *ln_comm_continue);
 
 __m256i load_vector(const char* pos);
 
