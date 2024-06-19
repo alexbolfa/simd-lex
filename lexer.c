@@ -11,6 +11,7 @@ TokenArray lex(char *input, long input_size) {
 
     char last_char = 0;
     bool ch_continue = 0;
+    bool str_continue = 0;
     bool escaped_continue = 0;
     __m256i current_vec = load_vector(input);
     __m256i src_current_vec = load_vector(input);
@@ -22,7 +23,7 @@ TokenArray lex(char *input, long input_size) {
 
         __m256i tags = run_sublexers(
             &current_vec, &next_vec,
-            src_current_vec, last_char, &ch_continue, &escaped_continue);
+            src_current_vec, last_char, &ch_continue, &escaped_continue, &str_continue);
 
         // Traverse tags
         int size;
@@ -202,8 +203,21 @@ void replace_white_space(__m256i* vector) {
     );
 }
 
+void replace_token_body(__m256i *vector) {
+    __m256i mask = _mm256_cmpeq_epi8(
+        *vector,
+        _mm256_set1_epi8(TOK_BODY)
+    );
+
+    *vector = _mm256_blendv_epi8(
+        *vector,
+        _mm256_setzero_si256(),
+        mask
+    );
+}
+
 __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
-                      escaped_continue) {
+                      escaped_continue, bool *str_continue) {
     __m256i tags = _mm256_setzero_si256();
 
     three_byte_punct_sub_lex(current_vec, next_vec, &tags);
@@ -215,9 +229,16 @@ __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src
     identifiers_sub_lex(*current_vec, &tags, last_char == 0);
     numeric_const_sub_lex(*current_vec, &tags, last_char == 0);
 
+    bool dummy = *escaped_continue;
     text_lit_sub_lex(current_vec, &tags, '\'',
                      ch_continue, TOK_CHAR_LIT,
+                     src_current_vec, &dummy);
+
+    text_lit_sub_lex(current_vec, &tags, '"',
+                     str_continue, TOK_STR_LIT,
                      src_current_vec, escaped_continue);
+
+    replace_token_body(&tags);
 
     return tags;
 }
@@ -645,7 +666,6 @@ void numeric_const_sub_lex(
     );
 }
 
-// TODO: remember if backslashes continue (if so remove or add)
 void text_lit_sub_lex(
     __m256i *current_vec,
     __m256i *tags,
@@ -656,9 +676,15 @@ void text_lit_sub_lex(
     bool *escaped_continue
 ) {
     uint32_t is_delim = _mm256_movemask_epi8(  // Delimiter
-        _mm256_cmpeq_epi8(
-            *current_vec,
-            _mm256_set1_epi8(delim)
+        _mm256_and_si256(
+            _mm256_cmpeq_epi8(
+                *current_vec,
+                _mm256_set1_epi8(delim)
+            ),
+            _mm256_cmpeq_epi8(
+                *tags,
+                _mm256_setzero_si256()
+            )
         )
     );
 
@@ -699,6 +725,12 @@ void text_lit_sub_lex(
 
     // Add token literals
     is_delim &= region; // Keep only starting delimiters
+
+    *tags = _mm256_blendv_epi8(
+        *tags,
+        _mm256_set1_epi8(TOK_BODY),
+        get_mask(region)
+    );
 
     *tags = _mm256_blendv_epi8(
         *tags,

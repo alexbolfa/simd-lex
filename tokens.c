@@ -292,6 +292,10 @@ void token_to_string(char *dst, const Token token, const char *src) {
             strcpy(dst, "char_constant  ");
             strcat(dst, (src + token.loc));
             break;
+        case TOK_STR_LIT:
+            strcpy(dst, "string_literal  ");
+            strcat(dst, (src + token.loc));
+            break;
         case TOK_IDENT:
             strcpy(dst, "identifier  ");
             strcat(dst, (src + token.loc));

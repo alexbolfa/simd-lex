@@ -108,11 +108,13 @@ typedef enum : uint8_t {
     TOK__THREAD_LOCAL = 57,     // _Thread_local
 
     TOK_CHAR_LIT = 202, // Char literal
+    TOK_STR_LIT = 203,  // String literal
 
     TOK_IDENT = 1,      // Identifiers
     TOK_NUM = 2,        // Numeric constants
 
     TOK_EOF = 0,        // End-of-file
+    TOK_BODY = 255,     // Token body
 } TokenType;
 
 typedef struct Token Token;

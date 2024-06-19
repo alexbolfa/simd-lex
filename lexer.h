@@ -52,8 +52,10 @@ void find_token_indices(__m256i *token_tags, __m256i *token_indices, int *size);
 
 void replace_white_space(__m256i* vector);
 
+void replace_token_body(__m256i *vector);
+
 __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
-                      escaped_continue);
+                      escaped_continue, bool *str_continue);
 
 TokenArray lex_file(char *file_path, char **file_content);
 
