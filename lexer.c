@@ -16,6 +16,7 @@ TokenArray lex(char *input, long input_size) {
     bool str_continue = 0;
     bool escaped_continue = 0;
     bool ln_comm_continue = 0;
+    bool block_comm_continue = 0;
     __m256i current_vec = load_vector(input);
     __m256i src_current_vec = load_vector(input);
 
@@ -27,7 +28,7 @@ TokenArray lex(char *input, long input_size) {
         __m256i tags = run_sublexers(
             &current_vec, &next_vec,
             src_current_vec, last_char,
-            &ch_continue, &escaped_continue, &str_continue, &ln_comm_continue);
+            &ch_continue, &escaped_continue, &str_continue, &ln_comm_continue, &block_comm_continue);
 
         // Traverse tags
         int size;
@@ -226,10 +227,11 @@ bool is_empty(__m256i vector) {
 }
 
 __m256i run_sublexers(__m256i *current_vec, __m256i *next_vec, const __m256i src_current_vec, char last_char, bool *ch_continue, bool *
-                      escaped_continue, bool *str_continue, bool *ln_comm_continue) {
+                      escaped_continue, bool *str_continue, bool *ln_comm_continue, bool *block_comm_continue) {
     __m256i tags = _mm256_setzero_si256();
 
     line_comments_sub_lex(current_vec, *next_vec, ln_comm_continue);
+    block_comments_sub_lex(current_vec, next_vec, block_comm_continue);
 
     if (is_empty(*current_vec))
         return tags;
@@ -839,6 +841,86 @@ void line_comments_sub_lex(__m256i *current_vec, __m256i next_vec, bool *ln_comm
         _mm256_setzero_si256(),
         region
     );
+}
+
+void block_comments_sub_lex(__m256i *current_vec, __m256i *next_vec, bool *block_comm_continue) {
+    const __m256i shifted_1 = look_ahead_one(*current_vec, *next_vec);
+
+    __m256i is_slash = _mm256_cmpeq_epi8(
+        *current_vec,
+        _mm256_set1_epi8('/')
+    );
+    __m256i has_star_after = _mm256_cmpeq_epi8(
+        shifted_1,
+        _mm256_set1_epi8('*')
+    );
+
+    __m256i has_slash_after = _mm256_cmpeq_epi8(
+        shifted_1,
+        _mm256_set1_epi8('/')
+    );
+    __m256i is_star = _mm256_cmpeq_epi8(
+        *current_vec,
+        _mm256_set1_epi8('*')
+    );
+
+    __m256i comment_start = _mm256_and_si256(
+        is_slash,
+        has_star_after
+    );
+
+    __m256i comment_end = _mm256_and_si256(
+        is_star,
+        has_slash_after
+    );
+
+    uint32_t region32;
+    int ok;
+
+    do {
+        uint32_t region_mask = _mm256_movemask_epi8(
+            _mm256_or_si256(
+                comment_start,
+                comment_end
+            )
+        );
+        region_mask ^= *block_comm_continue;
+
+        region32 = _mm_cvtsi128_si32(    // Literal region
+            _mm_clmulepi64_si128(
+                _mm_set_epi32(0, 0, 0, region_mask),
+                _mm_set1_epi8(-1),
+                0
+            )
+        );
+
+        __m256i outside_region = get_mask(~region32);
+
+        __m256i mistakes = _mm256_and_si256(
+            outside_region,
+            comment_start
+        );
+
+        comment_start = _mm256_xor_si256(   // remove mistakes if they exist
+            comment_start,
+            mistakes
+        );
+
+        ok = is_empty(mistakes);
+
+    } while (!ok);
+
+    //TODO: here
+    *block_comm_continue = (region32 >> 31) & 1;
+
+    *current_vec = _mm256_blendv_epi8(
+        *current_vec,
+        _mm256_setzero_si256(),
+        get_mask(region32 | (region32 << 1) | (region32 << 2))
+    );
+
+    uint8_t carry = ((region32 & (1 << 30)) >> 30) * 0xFF;
+    remove_prefix_64(next_vec, carry);
 }
 
 __m256i load_vector(const char* pos) {
