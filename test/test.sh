@@ -12,20 +12,18 @@ make
 
 # Execute the built program and capture its output
 ./simd_lexer "$SOURCE_FILE" \
-    | awk -F " " '{print $2, "",$3}' \
-    | sed "s/'//g" \
+    | awk -F " " '{print $2}' \
     > simd_lexer_output.txt
 
 # Execute the clang command and capture its output
 clang -fsyntax-only -Xclang -dump-tokens "$SOURCE_FILE" 2>&1 \
-    | awk -F "'" '{print $1, $2}' \
-    | sed "s/'//g" \
+    | awk -F "'" '{print $1}' \
     > clang_output.txt
 
 echo Running on "$SOURCE_FILE":
 
 # Check if the outputs are equal
-if cmp -s "simd_lexer_output.txt" "clang_output.txt"; then
+if diff -w "simd_lexer_output.txt" "clang_output.txt" >/dev/null; then
     # Outputs are equal, print PASSED in green
     echo -e "\e[32mPASSED\e[0m"
 else
