@@ -19,6 +19,8 @@ uint8_t hash(uint64_t val);
 
 void populate_keyword_lookup_table(short *lookup);
 
+__m256i vectorized_classification_one_byte(__m256i input);
+
 void find_keywords(TokenArray *tok_array, short *lookup);
 
 /**

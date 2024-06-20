@@ -302,19 +302,43 @@ __m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_ch
     return get_mask(is_period & (has_num_before | has_num_after));
 }
 
-void one_byte_punct_sub_lex(__m256i *current_vec, __m256i next_vec, __m256i *tags, char last_char) {
-    // Punctuators with ASCII in range [40, 47] i.e. ()*+,-./
-    __m256i mask = range_mask(*current_vec, 40, 47);
-
-    // Punctuators outside [40, 47] range i.e. !%&:;<=>?[]^{|}~
-    // excluding preprocessing operator '#'
-    __m128i match = _mm_loadu_si128((__m128i*)"!%&:;<=>?[]^{|}~");
-
-    // Combines masks
-    mask = _mm256_or_si256(
-        mask,
-        mm256_cmpistrm_any(match, *current_vec)
+__m256i vectorized_classification_one_byte(__m256i input) {
+    __m256i lower_nibble_mask = _mm256_set_epi8(
+            0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+            0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+            0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+            0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F
     );
+    __m256i lookup1 = _mm256_set_epi8(
+            3,  15,  15,  11,  15,  3,  1,  1,
+            0,  1,  1,  0,  0,  0,  1,  0,
+            3,  15,  15,  11,  15,  3,  1,  1,
+            0,  1,  1,  0,  0,  0,  1,  0
+    );
+    __m256i mask1 = _mm256_shuffle_epi8(lookup1, _mm256_and_si256(lower_nibble_mask, input));
+
+    input = _mm256_srli_epi32 (input, 4);
+
+    __m256i lookup2 = _mm256_set_epi8(
+            0,  0,  0,  0,  0,  0,  0,  0,
+            8,  0,  4,  0,  2,  1,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,
+            8,  0,  4,  0,  2,  1,  0,  0
+    );
+
+    __m256i mask2 = _mm256_shuffle_epi8(lookup2, _mm256_and_si256(lower_nibble_mask, input));
+
+    __m256i mask = _mm256_and_si256(mask1, mask2);
+    __m256i cmp = _mm256_cmpeq_epi8(mask, _mm256_setzero_si256());
+
+    return _mm256_xor_si256(
+            cmp,
+            _mm256_set1_epi8(-1)
+        );
+}
+
+void one_byte_punct_sub_lex(__m256i *current_vec, __m256i next_vec, __m256i *tags, char last_char) {
+    __m256i mask = vectorized_classification_one_byte(*current_vec);
 
     // Ignore periods part of numeric constants
     mask = _mm256_xor_si256(
