@@ -288,6 +288,20 @@ __m256i mm256_cmpistrm_any(__m128i match, __m256i vector) {
     );
 }
 
+__m256i mm256_cmpistrm_range(__m128i ranges, __m256i vector, int num_ranges) {
+    // Split vector in two for `_mm_cmpistrm`
+    __m128i low_vector = _mm256_extractf128_si256(vector, 0);
+    __m128i high_vector = _mm256_extractf128_si256(vector, 1);
+
+    __m128i low_outside_range_mask = _mm_cmpestrm(ranges, num_ranges, low_vector, 16, (1 << 6) | (1 << 2));
+    __m128i high_outside_range_mask = _mm_cmpestrm(ranges, num_ranges, high_vector, 16, (1 << 6) | (1 << 2));
+
+    return _mm256_set_m128i(
+        high_outside_range_mask,
+        low_outside_range_mask
+    );
+}
+
 __m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_char) {
     uint64_t is_period = _mm256_movemask_epi8(
         _mm256_cmpeq_epi8(
@@ -606,22 +620,12 @@ void three_byte_punct_sub_lex(__m256i *current_vec, __m256i *next_vec, __m256i *
 }
 
 __m256i alpha_mask(__m256i vector) {
-    const __m256i A = _mm256_set1_epi8('A' - 1);
-    const __m256i Z = _mm256_set1_epi8('Z' + 1);
-    const __m256i a = _mm256_set1_epi8('a' - 1);
-    const __m256i z = _mm256_set1_epi8('z' + 1);
-
-    const __m256i is_upper = _mm256_and_si256(
-        _mm256_cmpgt_epi8(vector, A),
-        _mm256_cmpgt_epi8(Z, vector)
+    __m128i ranges = _mm_set_epi8(
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  'z',  'a',  'Z',  'A'
     );
 
-    const __m256i is_lower = _mm256_and_si256(
-        _mm256_cmpgt_epi8(vector, a),
-        _mm256_cmpgt_epi8(z, vector)
-    );
-
-    return _mm256_or_si256(is_upper, is_lower);
+    return mm256_cmpistrm_range(ranges, vector, 4);
 }
 
 void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty) {
@@ -657,13 +661,12 @@ void identifiers_sub_lex(__m256i current_vec, __m256i *tags, bool last_empty) {
 }
 
 __m256i num_mask(__m256i vector) {
-    const __m256i zero = _mm256_set1_epi8('0' - 1);
-    const __m256i nine = _mm256_set1_epi8('9' + 1);
+    __m128i ranges = _mm_set_epi8(
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  '9',  '0'
+    );
 
-    __m256i is_ge_zero = _mm256_cmpgt_epi8(vector, zero);
-    __m256i is_le_nine = _mm256_cmpgt_epi8(nine, vector);
-
-    return _mm256_and_si256(is_ge_zero, is_le_nine);
+    return mm256_cmpistrm_range(ranges, vector, 2);
 }
 
 void numeric_const_sub_lex(
@@ -949,16 +952,6 @@ void block_comments_sub_lex(__m256i *current_vec, __m256i *next_vec, bool *block
 
 __m256i load_vector(const char* pos) {
     return _mm256_loadu_si256((__m256i*) pos);
-}
-
-__m256i range_mask(__m256i vector, uint8_t lo, uint8_t up) {
-    __m256i lo_bound = _mm256_set1_epi8(lo - 1);
-    __m256i up_bound = _mm256_set1_epi8(up + 1);
-
-    __m256i mask_gt = _mm256_cmpgt_epi8(vector, lo_bound);
-    __m256i mask_lt = _mm256_cmpgt_epi8(up_bound, vector);
-
-    return _mm256_and_si256(mask_lt, mask_gt);
 }
 
 char* read_file(const char *filename, long *file_size, long pad_multiple) {

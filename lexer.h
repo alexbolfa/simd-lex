@@ -65,6 +65,8 @@ TokenArray lex_file(char *file_path, char **file_content);
 
 __m256i mm256_cmpistrm_any(__m128i match, __m256i vector);
 
+__m256i mm256_cmpistrm_range(__m128i ranges, __m256i vector, int num_ranges);
+
 __m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_char);
 
 /**
@@ -157,18 +159,6 @@ void line_comments_sub_lex(__m256i *current_vec, __m256i next_vec, bool *ln_comm
 void block_comments_sub_lex(__m256i *current_vec, __m256i *next_vec, bool *block_comm_continue);
 
 __m256i load_vector(const char* pos);
-
-/**
- * Generates a mask indicating elements within the specified range.
- *
- * @param vector An __m256i vector containing the elements to be
- *  compared.
- * @param lo The lower bound of the range (inclusive).
- * @param up The upper bound of the range (inclusive).
- * @return An __m256i mask with bytes set to 0xFF for elements within
- *  the range.
- */
-__m256i range_mask(__m256i vector, uint8_t lo, uint8_t up);
 
 char* read_file(const char *filename, long *file_size, long pad_multiple);
 
