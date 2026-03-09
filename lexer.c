@@ -133,20 +133,22 @@ void find_keywords(TokenArray *tok_array, short *lookup) {
         }
     }
 }
-
 void mm256_pext(__m256i *vector, __m256i mask, int *size) {
-    // Split vectors in 64bit segments that can be used by popcnt and pext
-    const uint64_t *vector_64 = (uint64_t *) vector;
-    const uint64_t *mask_64 = (uint64_t *) &mask;
+    uint64_t mask_u64[4] __attribute__((aligned(32)));
+    uint64_t vector_u64[4] __attribute__((aligned(32)));
+    uint8_t result[32] __attribute__((aligned(32)));
+
+    _mm256_store_si256((__m256i*)mask_u64, mask);
+    _mm256_store_si256((__m256i*)vector_u64, *vector);
 
     *size = 0;
     for (int i = 0; i < 4; ++i) {
-        const uint64_t temp = _pext_u64(vector_64[i], mask_64[i]);
-
-        *(uint64_t*)((uint8_t *) vector + *size) = temp; // Concatenate the next indices
-
-        *size += _mm_popcnt_u64(mask_64[i]) >> 3;
+        const uint64_t temp = _pext_u64(vector_u64[i], mask_u64[i]);
+        memcpy(result + *size, &temp, sizeof(uint64_t));
+        *size += _mm_popcnt_u64(mask_u64[i]) >> 3;
     }
+
+    *vector = _mm256_load_si256((__m256i*)result);
 }
 
 __m256i non_zero_mask(const __m256i vector) {
