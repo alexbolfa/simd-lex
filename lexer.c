@@ -313,7 +313,7 @@ __m256i numeric_periods_mask(__m256i current_vec, __m256i next_vec, char last_ch
     );
     uint64_t has_num_after = _mm256_movemask_epi8(num_mask(look_ahead_one(current_vec, next_vec)));
     uint64_t has_num_before = _mm256_movemask_epi8(num_mask(current_vec));
-    has_num_before = (has_num_before << 1) | (last_char >= 0 && last_char <= 9);
+    has_num_before = (has_num_before << 1) | (last_char >= '0' && last_char <= '9');
 
     return get_mask(is_period & (has_num_before | has_num_after));
 }
